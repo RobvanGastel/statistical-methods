@@ -214,11 +214,131 @@ run;
 
 /* Question 1.5 */
 /* 95% confidence interval for log(μ) equal to (−0.137, 1.128) */
-/* a) Use the confidence interval of log(μ) to derive a 95% confidence interval for μ. */
-
+/* a) Use the confidence interval of log(μ) to derive a 95% 
+      confidence interval for μ. */
+/* (0.871970226, 3.08947137) */
 
 /* b) Test H0: μ=3 vs. H1: μ !=3 at a significance level of α=5%. */
+/* The confidence interval contains 3 so we can't reject H0. */
 
+/* Question 1.6 */
+/* a) Use the transformation LOG(44 - GA) to compute a 95% prediction 
+      interval for a single new observation of the gestational age. */
+DATA WEEK1;
+	set SASDATA.IVF;
+	where PER=4;
+run;
+
+proc means data=WEEK1 mean std n; 
+	var GA;
+    output out=gal_sumstat;
+run;
+
+proc transpose data=gal_sumstat out=gal_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
+	by _type_ _freq_;
+	id _stat_;
+run;
+
+data gal_PI;
+	set gal_PI;
+	T = QUANTILE("T", 1 - 0.05/2, N-1); 
+	LPL = MEAN - T * std*sqrt((N+1)/ N); 
+	UPL = MEAN + T * std*sqrt((N+1)/ N);
+run;
+
+proc print DATA=gal_PI; 
+	var LPL UPL;
+run;
+/* PI: (0.60957, 2.38299) */
+
+/* b) Create a 95% confidence interval for the mean of the transformed 
+      variable LOG(44 - GA). Can you use this confidence interval to create a 
+      95% confidence interval for the mean of GA? Explain your reasoning. */
+DATA WEEK1_Q6;
+	set WEEK1;
+	GAL = log(44 - GA);
+run;
+
+ods select BasicIntervals;
+PROC UNIVARIATE data=WEEK1_Q6 cibasic(alpha=0.05);
+   var GAL;
+run;
+/* Can't convert Log(44 - GA) to work for GA */
+
+/* c)  */
+ods select HISTOGRAM;
+PROC UNIVARIATE data=WEEK1;
+   HISTOGRAM GA/NORMAL;
+   QQPLOT    GA/NORMAL;
+   PPPLOT 	 GA/NORMAL;
+RUN;
+
+/* λ ∈ {−2,−1/2,0,1/2,2} */
+DATA WEEK1BOXCOX; 
+	SET WEEK1;
+	AGEMINUS2 = (-1/2)*(GA**-2 -1); 
+	AGEMINUS1 = (-1)*(GA**-1 -1); 
+	AGEMINUS12 = (-2)*(GA**-(0.5)-1); 
+	AGE0 = log(GA);
+	AGEPLUS12 = (2)*(GA**(1/2) -1); 
+	AGEPLUS2 = (0.5)*(GA**(2) -1);
+	AGEPLUS3 = (1/5)*(GA**(5) -1);
+run;
+
+proc means data=WEEK1BOXCOX mean std n; 
+	var AGEPLUS3;
+    output out=agem_sumstat;
+run;
+proc transpose data=agem_sumstat out=agem_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
+	by _type_ _freq_;
+	id _stat_;
+run;
+
+data agem_PI;
+	set agem_PI;
+	T = QUANTILE("T", 1 - 0.05/2, N-1); 
+	LPL = MEAN - T * std*sqrt((N+1)/ N); 
+	UPL = MEAN + T * std*sqrt((N+1)/ N);
+run;
+
+proc print DATA=agem_PI; 
+	var LPL UPL;
+run;
+
+/* Question 1.7 */
+%macro samples(dataset=,ns=,n=);
+	proc surveyselect data=&dataset NOPRINT method=urs n=&n out=FINAL;
+run;
+
+data FINAL;
+	set FINAL; 
+	sampleno = 1;
+run;
+
+%do sn = 2 %to &ns;
+	proc surveyselect data=&dataset NOPRINT 
+	method=urs n=&n out=SAMPLEI;
+run;
+
+data SAMPLEI;
+	set SAMPLEI;
+	sampleno = &sn;
+run;
+
+data FINAL;
+	set Final SAMPLEI;
+run;
+%end;
+
+proc dataset library=work NOPRINT;
+	delete SAMPLEI;
+run;
+%mend;
+
+%samples(dataset=WEEK1, ns=1000, n=10);
+
+
+/* Question 1.8 */
 
 /* Example slides */
 DATA WEEK1;
