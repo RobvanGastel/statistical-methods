@@ -1,2 +1,7 @@
+# OS files
 .DS_Store
+
+# SAS files
+*.sas7bdat
+*.log 
 *.sas~
