@@ -340,6 +340,8 @@ run;
 
 /* Question 1.8 */
 
+
+
 /* Example slides */
 DATA WEEK1;
 	set SASDATA.IVF;
