@@ -1,4 +1,4 @@
-LIBNAME SASDATA "/folders/myfolders/applied-stats/data";
+LIBNAME SASDATA "/folders/myfolders/statistical-methods/data";
 
 DATA WEEK1;
 	set SASDATA.IVF;
@@ -12,19 +12,36 @@ PROC FREQ data=WEEK1;
 Run;
 
 /* Question 1.2 */
-/* a) */
+/* a) Compute the mean and variance of AGEM. */
 PROC MEANS DATA=WEEK1 mean var std;
 	VAR AGEM;
 RUN;
 
-/* confidence intervals */
-ods select BasicIntervals;
-PROC UNIVARIATE data=WEEK1 cibasic(alpha=0.05);
-   var AGEM;
-run;
-/* TODO: 95% prediction interval for a single new observation of AGEM. */
+/* prediction interval */
+PROC IML;
+use WEEK1;
+read all var{agem}; close WEEK1;
+alpha=0.05;
+Ybar=mean(agem); 
+s=var(agem);
+n=nrow(agem); 
+qT=quantile('t',alpha/2,n-1); 
+UPL=Ybar-qT*sqrt((n+1)*s/n); 
+LPL=Ybar+qT*sqrt((n+1)*s/n); 
+A=Ybar||LPL||UPL;
 
-/* b) How many mothers were 40 years old or older when they became pregnant? */
+create DATA from A[colname={'mean' 'LPL' 'UPL'}]; 
+append from A;
+close DATA;
+quit;
+
+/* Another way of PI */
+proc reg data=WEEK1;
+model AGEM= / cli alpha=0.05;
+run;
+
+/* b) How many mothers were 40 years old or 
+older when they became pregnant? */
 /* Answer: 3 */
 PROC FREQ data=WEEK1;
 	tables AGEM;
@@ -41,13 +58,40 @@ PROC UNIVARIATE data=WEEK1;
    PPPLOT 	 AGEM/NORMAL;
 RUN;
 
+/* c) Compute a 95% confidence interval for 
+the variance of AGEM.*/
+ods select BasicIntervals;
+PROC UNIVARIATE data=WEEK1 cibasic(alpha=0.05);
+   var AGEM;
+run;
+
+
+PROC IML;
+use WEEK1;
+read all var{agem}; 
+close WEEK1;
+
+alpha=0.05;
+Ybar=mean(agem); 
+s=var(agem); 
+n=nrow(agem);
+
+qT=quantile('t',alpha/ 2,n-1); 
+UCL=Ybar-qT*sqrt(s/n); LCL=Ybar+qT*sqrt(s/n);
+A=Ybar||LCL||UCL;
+create DATA from A[colname={'mean' 'LCL' 'UCL'}]; 
+append from A;
+close DATA;
+quit;
+
 /* Question 1.3 */
-/* a) */
 DATA WEEK1;
 	set SASDATA.IVF;
 	where PER=4;
 run;
 
+/* a) */
+/* What is the interquartile range of the birth weight? */
 ods select QUANTILES;
 PROC UNIVARIATE data=WEEK1 cipctldf;
   var BW;
@@ -59,6 +103,7 @@ PROC MEANS data=WEEK1 qrange;
 run;
 
 /* b) */
+
 /* TODO */
 
 /* c) */
