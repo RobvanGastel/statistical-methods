@@ -37,7 +37,7 @@ quit;
 
 /* Another way of PI */
 proc reg data=WEEK1;
-model AGEM= / cli alpha=0.05;
+	model AGEM= / cli alpha=0.05;
 run;
 
 /* b) How many mothers were 40 years old or 
@@ -65,24 +65,11 @@ PROC UNIVARIATE data=WEEK1 cibasic(alpha=0.05);
    var AGEM;
 run;
 
+proc univariate data=WEEK1 cibasic;
+	var AGEM;
+	histogram AGEM/ normal;
+run;
 
-PROC IML;
-use WEEK1;
-read all var{agem}; 
-close WEEK1;
-
-alpha=0.05;
-Ybar=mean(agem); 
-s=var(agem); 
-n=nrow(agem);
-
-qT=quantile('t',alpha/ 2,n-1); 
-UCL=Ybar-qT*sqrt(s/n); LCL=Ybar+qT*sqrt(s/n);
-A=Ybar||LCL||UCL;
-create DATA from A[colname={'mean' 'LCL' 'UCL'}]; 
-append from A;
-close DATA;
-quit;
 
 /* Question 1.3 */
 DATA WEEK1;
@@ -103,8 +90,17 @@ PROC MEANS data=WEEK1 qrange;
 run;
 
 /* b) */
-
 /* TODO */
+DATA IQRRANGE;
+	SET WEEK1;
+	IF BW < 3365 + 870 THEN count= 1; 
+	IF BW > 3365 - 870 THEN count= 1; 
+	ELSE count=0;
+run;
+
+PROC FREQ data=IQRRANGE;
+	tables count;
+Run;
 
 /* c) */
 /* λ ∈ {−2,−1/2,0,1/2,2} */
@@ -131,27 +127,10 @@ run;
 /* Becomes normal at λ = 2 */
 
 /* d) Prediction Interval */
-proc means data=WEEK1 mean std n; 
-	var BW;
-    output out=agem_sumstat;
+/* TODO  */
+proc reg data=WEEK1;
+     model BW= / cli alpha=0.05;
 run;
-
-proc transpose data=agem_sumstat out=bw_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
-	by _type_ _freq_;
-	id _stat_;
-run;
-
-data bw_PI;
-	set bw_PI;
-	T = QUANTILE("T", 1 - 0.05/2, N-1); 
-	LPL = MEAN - T * std*sqrt((N+1)/ N); 
-	UPL = MEAN + T * std*sqrt((N+1)/ N);
-run;
-
-proc print DATA=bw_PI; 
-	var LPL UPL;
-run;
-
 
 /* e) */
 /* Use means, or show data and manually look up */
@@ -168,10 +147,7 @@ close WEEK1;
 minC = X[><, ];    /* row vector contains min of columns */
 maxC = X[<>, ];    /* row vector contains max of columns */
 print (minC//maxC)[r={"Min" "Max"} c=varNames];
-
-/* proc sort data=WEEK1 out=WEEK1_SORT; */
-/* 	by descending BW; */
-/* run; */
+run;
 
 /* f) */
 /* boys (SEX = 1) or girls (SEX = 0)  */
@@ -197,6 +173,9 @@ run;
 proc means data=week1_boy mean var n skew kurt;
 	var BW;
 run;
+
+/* g) */
+/* TODO */
 
 /* Question 1.4 */
 DATA WEEK1_CUSTOM; 
@@ -261,6 +240,7 @@ run;
 /* 95% confidence interval for log(μ) equal to (−0.137, 1.128) */
 /* a) Use the confidence interval of log(μ) to derive a 95% 
       confidence interval for μ. */
+/* e^log(μ) = μ */
 /* (0.871970226, 3.08947137) */
 
 /* b) Test H0: μ=3 vs. H1: μ !=3 at a significance level of α=5%. */
@@ -274,8 +254,13 @@ DATA WEEK1;
 	where PER=4;
 run;
 
+DATA WEEK1;
+	set WEEK1;
+	AG = log(44 - GA);
+run;
+
 proc means data=WEEK1 mean std n; 
-	var GA;
+	var AG;
     output out=gal_sumstat;
 run;
 
@@ -318,37 +303,10 @@ PROC UNIVARIATE data=WEEK1;
    PPPLOT 	 GA/NORMAL;
 RUN;
 
-/* λ ∈ {−2,−1/2,0,1/2,2} */
-DATA WEEK1BOXCOX; 
-	SET WEEK1;
-	AGEMINUS2 = (-1/2)*(GA**-2 -1); 
-	AGEMINUS1 = (-1)*(GA**-1 -1); 
-	AGEMINUS12 = (-2)*(GA**-(0.5)-1); 
-	AGE0 = log(GA);
-	AGEPLUS12 = (2)*(GA**(1/2) -1); 
-	AGEPLUS2 = (0.5)*(GA**(2) -1);
-	AGEPLUS3 = (1/5)*(GA**(5) -1);
-run;
+/* d-g) */
+/* TODO */
 
-proc means data=WEEK1BOXCOX mean std n; 
-	var AGEPLUS3;
-    output out=agem_sumstat;
-run;
-proc transpose data=agem_sumstat out=agem_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
-	by _type_ _freq_;
-	id _stat_;
-run;
 
-data agem_PI;
-	set agem_PI;
-	T = QUANTILE("T", 1 - 0.05/2, N-1); 
-	LPL = MEAN - T * std*sqrt((N+1)/ N); 
-	UPL = MEAN + T * std*sqrt((N+1)/ N);
-run;
-
-proc print DATA=agem_PI; 
-	var LPL UPL;
-run;
 
 /* Question 1.7 */
 %macro samples(dataset=,ns=,n=);
@@ -382,10 +340,12 @@ run;
 
 %samples(dataset=WEEK1, ns=1000, n=10);
 
+/* a-c) */
+/* TODO */
 
 /* Question 1.8 */
-
-
+/* a-h) */
+/* TODO */
 
 /* Example slides */
 DATA WEEK1;
