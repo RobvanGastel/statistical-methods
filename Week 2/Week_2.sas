@@ -80,4 +80,56 @@ proc npar1way data=WEEK2_2 correct=NO;
    exact wilcoxon / mc;
 run;
 
+/* b-f */
+/* TODO */
+
+/* Question 2.3 */
+
+ods output WilcoxonScores=WRS (keep= Class N SumOfScores); 
+proc npar1way data=WEEK2_2 correct=NO;
+   class TRT;
+   var BW;
+   exact wilcoxon / mc;
+run;
+
+PROC IML;
+use WRS;
+read all var{N SumOfScores}; 
+close WRS;
+
+G={1 , 2}; 
+U=SumOfScores-N#(N+1)/2; 
+P=U/prod(N);
+
+A=G||N||U||P;
+create MWU from A [colname={'Group' 'N' 'U' 'P'}]; 
+append from A;
+close MWU;
+quit;
+
+
+%macro mann_whitney_u(dataset, class, var); 
+
+ods select none;
+proc npar1way data=&dataset;
+	var &var;
+	class &class;
+	exact wilcoxon / mc;
+	ods output WilcoxonScores=OUT_SCORES; 
+	ods output WilcoxonTest=OUT_TEST;
+run;
+
+
+PROC IML;
+use WRS;
+read all var{N SumOfScores}; close WRS;
+G={1 , 2}; U=SumOfScores-N#(N+1)/2; P=U/prod(N);
+ A=G||N||U||P;
+create MWU from A [colname={'Group' 'N' 'U' 'P'}]; append from A;
+close MWU;
+quit;
+
+ods select all;
+
+%mend;
 
