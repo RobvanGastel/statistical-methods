@@ -173,5 +173,11 @@ run;
 
 /* Question 2.7 */
 /* a) */
+DATA WEEK2_7;
+	set WEEK2;
+	keep FIS TRT;
+run;
+
+
 
 
