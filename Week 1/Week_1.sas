@@ -4,9 +4,9 @@ DATA WEEK1;
 	set SASDATA.IVF;
 	where PER=4;
 RUN;
-/* PROC PRINT DATA=WEEK1 NOOBS; */
 
 /* Question 1.1 */
+/* Frequence between control group */
 PROC FREQ data=WEEK1;
 	tables TRT;
 RUN;
@@ -19,25 +19,27 @@ RUN;
 
 /* prediction interval */
 PROC IML;
-use WEEK1;
-read all var{agem}; close WEEK1;
-alpha=0.05;
-Ybar=mean(agem); 
-s=var(agem);
-n=nrow(agem); 
-qT=quantile('t',alpha/2,n-1); 
-UPL=Ybar-qT*sqrt((n+1)*s/n); 
-LPL=Ybar+qT*sqrt((n+1)*s/n); 
-A=Ybar||LPL||UPL;
-
-create DATA from A[colname={'mean' 'LPL' 'UPL'}]; 
-append from A;
-close DATA;
+	use WEEK1;
+	read all var{agem}; 
+	close WEEK1;
+	
+	alpha=0.05;
+	Ybar=mean(agem); 
+	s=var(agem);
+	n=nrow(agem); 
+	qT=quantile('t',alpha/2,n-1); 
+	UPL=Ybar-qT*sqrt((n+1)*s/n); 
+	LPL=Ybar+qT*sqrt((n+1)*s/n); 
+	A=Ybar||LPL||UPL;
+	
+	create DATA from A[colname={'mean' 'LPL' 'UPL'}]; 
+	append from A;
+	close DATA;
 QUIT;
 
 /* Another way of PI */
 PROC REG data=WEEK1;
-	model AGEM= / cli alpha=0.05;
+	model AGEM= /cli alpha=0.05;
 RUN;
 
 /* b) How many mothers were 40 years old or 
@@ -58,25 +60,20 @@ PROC UNIVARIATE data=WEEK1;
    ppplot 	 value/normal;
 RUN;
 
-/* c) Compute a 95% confidence interval for 
-the variance of AGEM.*/
+/* c) 
+/* Confidence Interval for the variance of AGEM. */
 ods select BasicIntervals;
 PROC UNIVARIATE data=WEEK1 cibasic(alpha=0.05);
    var AGEM;
 RUN;
 
-PROC univariate data=WEEK1 cibasic;
+PROC UNIVARIATE data=WEEK1 cibasic;
 	var AGEM;
-	histogram AGEM/ normal;
+	histogram AGEM/normal;
 RUN;
 
 
 /* Question 1.3 */
-DATA WEEK1;
-	set SASDATA.IVF;
-	where PER=4;
-RUN;
-
 /* a) */
 /* What is the interquartile range of the birth weight? */
 ods select QUANTILES;
@@ -90,47 +87,70 @@ PROC MEANS data=WEEK1 qrange;
 RUN;
 
 /* b) */
-/* TODO */
-DATA IQRRANGE;
-	set WEEK1;
-	if BW < 3365 + 870 then count= 1; 
-	if BW > 3365 - 870 then count= 1; 
-	else count=0;
-RUN;
-
-PROC FREQ data=IQRRANGE;
-	tables count;
-RUN;
+/* Birthweight differs atmost 1 IQR from median */
+PROC SQL;
+	SELECT COUNT(BW) / (SELECT count(*) FROM WEEK1)
+	FROM WEEK1 
+	WHERE BW BETWEEN 3365 - 870 AND 3365 + 870; 
+QUIT;	/* median +- interquartile range */
 
 /* c) */
+/* Box-Cox transformation */
 /* λ ∈ {−2,−1/2,0,1/2,2} */
 DATA WEEK1BOXCOX; 
 	set WEEK1;
-	AGEMMINUS2 = (-1/2)*(AGEM**-2 -1); 
-	AGEMMINUS1 = (-1)*(AGEM**-1 -1); 
-	AGEMMINUS12 = (-2)*(AGEM**-(0.5)-1); 
-	AGEM0 = log(AGEM);
-	AGEMPLUS12 = (2)*(AGEM**(1/2) -1); 
-	AGEMPLUS2 = (0.5)*(AGEM**(2) -1);
+	BWMINUS2 = (-1/2)*(BW**-2 -1); 
+	BWMINUS1 = (-1)*(BW**-1 -1); 
+	BWMINUS12 = (-2)*(BW**-(0.5)-1); 
+	BW0 = log(BW);
+	BWPLUS12 = (2)*(BW**(1/2) -1); 
+	BWPLUS2 = (0.5)*(BW**(2) -1);
 RUN;
 
 ods select histogram;
 PROC UNIVARIATE data=WEEK1BOXCOX; 
-   	histogram AGEM /normal;
-	histogram AGEMMINUS2 /normal; 
-	histogram AGEMMINUS1 /normal;
-   	histogram AGEMMINUS12 /normal;
-   	histogram AGEM0 /normal;
-  	histogram AGEMPLUS12 /normal;
-   	histogram AGEMPLUS2 /normal;
+   	histogram BW /normal;
+	histogram BWMINUS2 /normal; 
+	histogram BWMINUS1 /normal;
+   	histogram BWMINUS12 /normal;
+   	histogram BW0 /normal;
+  	histogram BWPLUS12 /normal;
+   	histogram BWPLUS2 /normal;
 RUN;
 /* Becomes normal at λ = 2 */
 
-/* d) Prediction Interval */
-/* TODO  */
-PROC REG data = WEEK1;
-     model BW = / cli alpha=0.05;
-RUN;
+/* d) */
+/* Prediction Interval */
+PROC IML;
+	use WEEK1BOXCOX;
+	read all var{BWPLUS2};
+	close WEEK1BOXCOX;
+	
+	alpha=0.05;
+	Ybar=mean(BWPLUS2);
+	s=var(BWPLUS2);
+	n=nrow(BWPLUS2);
+	qT=quantile('t', alpha/2, n-1);
+	
+	UCL=Ybar - qT*sqrt(s/n);
+	LCL=Ybar + qT*sqrt(s/n);
+	UPL=Ybar - qT*sqrt((n+1) * s/n);
+	LPL=Ybar + qT*sqrt((n+1) * s/n);
+	
+	/* Reverse the transform */
+	Ybar = sqrt(2*Ybar + 1);
+	LCL = sqrt(2*LCL + 1);
+	UCL = sqrt(2*UCL + 1);
+	LPL = sqrt(2*LPL + 1);
+	UPL = sqrt(2*UPL + 1);
+		
+	A=Ybar||UPL||LPL||UCL||LCL;
+	
+	create DATA from
+	A[colname={'mean', 'UPL', 'LPL', 'UCL', 'LCL'}];
+	append from A;
+	close DATA;
+QUIT;
 
 /* e) */
 /* Use MEANS, or show DATA and manually look up */
@@ -140,13 +160,13 @@ RUN;
 
 /* Min and Max of cols in general */
 PROC IML;
-use WEEK1;
-read all var _NUM_ into X[c=varNames];
-close WEEK1;
- 
-minC = X[><, ];    /* row vector contains min of columns */
-maxC = X[<>, ];    /* row vector contains max of columns */
-print (minC//maxC)[r={"Min" "Max"} c=varNames];
+	use WEEK1;
+	read all var _NUM_ into X[c=varNames];
+	close WEEK1;
+	 
+	minC = X[><, ];    /* row vector contains min of columns */
+	maxC = X[<>, ];    /* row vector contains max of columns */
+	print (minC//maxC)[r={"Min" "Max"} c=varNames];
 RUN;
 
 /* f) */
@@ -161,11 +181,11 @@ DATA WEEK1_BOY;
 	where SEX = 1;
 RUN;
 
-PROC FREQ data=week1;
+PROC FREQ data=WEEK1;
 	tables sex;
 RUN;
 
-/* Girls */
+/* Compute statistics of subsets */
 PROC MEANS data=WEEK1_GIRL mean var n skew kurt;
 	var BW;
 RUN;
@@ -175,7 +195,45 @@ PROC MEANS data=WEEK1_BOY mean var n skew kurt;
 RUN;
 
 /* g) */
-/* TODO */
+/* The prediction interval for boys is wider as */
+/* the variance is bigger for boys. */
+PROC IML;
+	use WEEK1BOXCOX;
+	read all var{BWPLUS2} into GIRL where(SEX=:0);
+	read all var{BWPLUS2} into BOY where(SEX=:1);
+	close WEEK1BOXCOX;
+	
+	alpha = 0.05;
+	Ybar_b = mean(BOY);
+	Ybar = mean(BOY);
+	s = var(BOY);
+	n = nrow(BOY);
+	qT = quantile('t', alpha/2, n-1);
+	
+	UPL=Ybar - qT*sqrt((n+1) * s/n);
+	LPL=Ybar + qT*sqrt((n+1) * s/n);
+	
+	LPL_b = sqrt(2*LPL + 1);
+	UPL_b = sqrt(2*UPL + 1);
+	
+	alpha = 0.05;
+	Ybar_g = mean(GIRL);
+	Ybar = mean(GIRL);
+	s = var(GIRL);
+	n = nrow(GIRL);
+	qT = quantile('t', alpha/2, n-1);
+	
+	UPL=Ybar - qT*sqrt((n+1) * s/n);
+	LPL=Ybar + qT*sqrt((n+1) * s/n);
+	
+	LPL_g = sqrt(2*LPL + 1);
+	UPL_g = sqrt(2*UPL + 1);
+	
+	A = Ybar_b||LPL_b||UPL_b||Ybar_g||LPL_g||UPL_g;
+	create DATA from A[colname={'mean Boy' 'LPL Boy' 'UPL Boy' 'mean Girl' 'LPL Girl' 'UPL Girl'}];
+		append from A;
+	close DATA;
+QUIT;
 
 /* Question 1.4 */
 DATA WEEK1_CUSTOM; 
@@ -200,7 +258,7 @@ RUN;
 PROC MEANS data=WEEK1_CUSTOM mean var skew kurt;
 RUN;
 
-/* Extra histogram plot */
+/* Plots */
 ods select HISTOGRAM;
 PROC UNIVARIATE data=WEEK1_CUSTOM;
    histogram value/normal;
@@ -208,13 +266,15 @@ PROC UNIVARIATE data=WEEK1_CUSTOM;
    ppplot 	 value/normal;
 RUN;
 
-/* b) Confidence Interval */
+/* b) 
+/* Confidence Interval */
 ods select BasicIntervals;
 PROC UNIVARIATE data=WEEK1_CUSTOM cibasic(alpha=0.05);
    var value;
 RUN;
 
-/* c) Prediction Interval */
+/* c) 
+/* Prediction Interval */
 PROC MEANS data=WEEK1_CUSTOM mean std n; 
 	var value;
     output out=custom_sumstat;
@@ -237,18 +297,20 @@ PROC PRINT data=value_PI;
 RUN;
 
 /* Question 1.5 */
-/* 95% confidence interval for log(μ) equal to (−0.137, 1.128) */
-/* a) Use the confidence interval of log(μ) to derive a 95% 
-      confidence interval for μ. */
-/* e^log(μ) = μ */
-/* (0.871970226, 3.08947137) */
+/* 95% CI for log(μ) is equal to (−0.137, 1.128) */
+/* a) 
+/* Use the CI of log(μ) to derive a 95% CI for μ.  */
+/* We can apply e^log(μ) = μ so, (0.871970226, 3.08947137) */
 
-/* b) Test H0: μ=3 vs. H1: μ !=3 at a significance level of α=5%. */
-/* The confidence interval contains 3 so we can't reject H0. */
+/* b) 
+/* Test H0: μ=3 vs. H1: μ !=3 at a significance level  */
+/* of α=5%. */
+/* The CI contains 3 so we can't reject H0. */
 
 /* Question 1.6 */
-/* a) Use the transformation LOG(44 - GA) to compute a 95% prediction 
-      interval for a single new observation of the gestational age. */
+/* a) 
+/* Use the transformation LOG(44 - GA) to compute a 95%  */
+/* PI for a single new observation of GA */
 DATA WEEK1;
 	set SASDATA.IVF;
 	where PER=4;
@@ -281,9 +343,8 @@ PROC PRINT data=gal_PI;
 RUN;
 /* PI: (0.60957, 2.38299) */
 
-/* b) Create a 95% confidence interval for the mean of the transformed 
-      variable LOG(44 - GA). Can you use this confidence interval to create a 
-      95% confidence interval for the mean of GA? Explain your reasoning. */
+/* b)  */
+/* Can't convert Log(44 - GA) to work for GA */
 DATA WEEK1_Q6;
 	set WEEK1;
 	GAL = log(44 - GA);
@@ -293,7 +354,6 @@ ods select BasicIntervals;
 PROC UNIVARIATE data=WEEK1_Q6 cibasic(alpha=0.05);
    var GAL;
 RUN;
-/* Can't convert Log(44 - GA) to work for GA */
 
 /* c)  */
 /* Confidence interval median */
@@ -331,8 +391,8 @@ PROC SQL;
 QUIT;
 
 PROC IML;	
-	use WEEK1_Q6 where(PRETERM=1);
-		read all var{FIS};
+	use WEEK1_Q6 where(PRE_38=1);
+	read all var{FIS};
 	close WEEK1_Q6;
 	
 	avg = mean(FIS);
@@ -350,12 +410,11 @@ PROC FREQ data=WEEK1_Q6;
 RUN;
 
 /* g) */
-/* For exact intervals we have to know the distribution */
-
+/* Its done the same as F but use Clopper-Pearson (exact) */
 
 /* Question 1.7 */
 %macro samples(DATAset=,ns=,n=);
-	PROC surveyselect DATA=&DATAset NOPRINT method=urs n=&n out=FINAL;
+	PROC SURVEYSELECT data=&dataset noprint method=urs n=&n out=FINAL;
 RUN;
 
 DATA FINAL;
@@ -364,7 +423,7 @@ DATA FINAL;
 RUN;
 
 %do sn = 2 %to &ns;
-	PROC surveyselect DATA=&DATAset NOPRINT 
+	PROC SURVEYSELECT data=&dataset noprint
 	method=urs n=&n out=SAMPLEI;
 RUN;
 
@@ -378,30 +437,102 @@ DATA FINAL;
 RUN;
 %end;
 
-PROC DATASETS library=work NOPRINT;
+PROC DATASETS library=work noprint;
 	delete SAMPLEI;
 RUN;
 %mend;
 
-%samples(DATAset=WEEK1, ns=1000, n=10);
+/* a) */
+%samples(dataset=WEEK1, ns=1000, n=10);
 
-/* a-c) */
-/* TODO */
+PROC PRINT DATA=FINAL;
+RUN;
+
+/* b) */
+PROC MEANS data=FINAL nway;
+	class sampleno;
+	var AGEM;
+RUN;
+
+/* Or by SQL */
+PROC SQL;
+	CREATE TABLE AVG_FINAL AS
+		SELECT avg(AGEM) as mean, var(AGEM) as variance
+		FROM FINAL
+		GROUP BY SAMPLENO;
+RUN;
+
+/* c) */
+/* We can see a normal distribution for the mean */
+/* and a Chi-Square distribution for the variance */
+ods select HISTOGRAM;
+PROC UNIVARIATE data=AVG_FINAL;
+   histogram mean/normal;
+   histogram variance/normal;
+RUN;
 
 /* Question 1.8 */
-/* a-h) */
-/* TODO */
+/* a) */
+PROC TTEST h0=3200 sides=2 data=WEEK1;
+	var BW;
+RUN;
+/* We reject H0 with p-value = 0.285 and */
+/* test statistic = 2.20 */
 
-/* Example slides */
-DATA WEEK1;
-	set SASDATA.IVF;
-	where PER=4; AGEMB = (AGEM<30); 
-	keep AGEMB AGEM;
+/* b) */
+/* the p-value = 0.0143 */
+PROC TTEST h0=3200 sides=U data=WEEK1;
+	var BW;
 RUN;
 
-PROC FREQ data=WEEK1;
- tables AGEMB /binomial(wald wilson exact level=2) alpha=0.05;
+/* c) */
+/* Does the CLT apply? */
+/* Seems like it does */
+%samples(dataset=WEEK1, ns=100, n=253);
+
+PROC MEANS data=FINAL mean noprint; 
+	var BW;
+	by sampleno;
+	output out=MEANSBW mean=BW_MEAN; 
 RUN;
 
+PROC UNIVARIATE data=MEANSBW; 
+	hist BW_MEAN /normal;
+run; 
+%mend;
+
+/* d) */
+/* 3 identical copies will not change the effect size */
+
+/* e) */
+/* It equals the p-value of question a */
+
+/* f) */
+ods graphics off;
+ods exclude all;
+PROC TTEST data=FINAL h0=3200 sides=u alpha=0.05;
+	var BW;
+	by SAMPLENO;
+	ods output ttests=POWER(keep=PROBT);
+RUN;
+ods exclude none; 
+ods graphics on;
+
+/* g) */
+/* Power is about 66%, Reject H0 */
+DATA RESULTS; 
+   set POWER; 
+   RejectH0 = (Probt <= 0.05); 
+RUN; 
+ 
+/* Compute proportion (# reject H0)/ # samples */
+/* and CI */
+PROC FREQ data=RESULTS; 
+   tables RejectH0 / nocum binomial(level='1');
+RUN;
+
+/* h) */
+/* Power is expected to go down with smaller  */
+/* sample size */
 
 
