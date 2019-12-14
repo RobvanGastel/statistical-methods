@@ -4,17 +4,17 @@
 * Alternative hypotheses
 * T-test
 * Homogeneity of variance tests
-- F-test
-− Bartlett’s test 
-− Levene’s test
+	* F-test
+	* Bartlett’s test 
+	* Levene’s test
 * Wilcoxon rank sum test 
-− Mann-Whitney test
+	* Mann-Whitney test
 * Kolmogorov-Smirnov test
 * Two independent samples
-* Mann-Whitney test
-* Kolmogorov-Smirnov test
+	* Mann-Whitney test
+	* Kolmogorov-Smirnov test
 * Two independent samples: Binary outcomes 
-* Chi-square test
-* Fisher exact test
+	* Chi-square test
+	* Fisher exact test
 * Multiple independent samples 
-* Chi-square test
+	* Chi-square test
