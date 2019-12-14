@@ -1,20 +1,20 @@
-LIBNAME SASDATA "/folders/myfolders/statistical-methods/data";
+LIBNAME SASDATA "/folders/myfolders/statistical-methods/DATA";
 
 DATA WEEK1;
 	set SASDATA.IVF;
 	where PER=4;
-run;
-/* PROC PRINT data=WEEK1 NOOBS; */
+RUN;
+/* PROC PRINT DATA=WEEK1 NOOBS; */
 
 /* Question 1.1 */
 PROC FREQ data=WEEK1;
 	tables TRT;
-Run;
+RUN;
 
 /* Question 1.2 */
 /* a) Compute the mean and variance of AGEM. */
-PROC MEANS DATA=WEEK1 mean var std;
-	VAR AGEM;
+PROC MEANS data=WEEK1 mean var std;
+	var AGEM;
 RUN;
 
 /* prediction interval */
@@ -33,12 +33,12 @@ A=Ybar||LPL||UPL;
 create DATA from A[colname={'mean' 'LPL' 'UPL'}]; 
 append from A;
 close DATA;
-quit;
+QUIT;
 
 /* Another way of PI */
-proc reg data=WEEK1;
+PROC REG data=WEEK1;
 	model AGEM= / cli alpha=0.05;
-run;
+RUN;
 
 /* b) How many mothers were 40 years old or 
 older when they became pregnant? */
@@ -46,16 +46,16 @@ older when they became pregnant? */
 PROC FREQ data=WEEK1;
 	tables AGEM;
 	where AGEM >= 40;
-Run;
+RUN;
 
 /* Is AGEM really normal distributed? */
 /* It seems like it is. */
 ods select HISTOGRAM, QQPLOT, PPPLOT;
 PROC UNIVARIATE data=WEEK1;
-   VAR AGEM;
-   HISTOGRAM AGEM/NORMAL;
-   QQPLOT    AGEM/NORMAL;
-   PPPLOT 	 AGEM/NORMAL;
+   var AGEM;
+   histogram value/normal;
+   qqplot    value/normal;
+   ppplot 	 value/normal;
 RUN;
 
 /* c) Compute a 95% confidence interval for 
@@ -63,56 +63,56 @@ the variance of AGEM.*/
 ods select BasicIntervals;
 PROC UNIVARIATE data=WEEK1 cibasic(alpha=0.05);
    var AGEM;
-run;
+RUN;
 
-proc univariate data=WEEK1 cibasic;
+PROC univariate data=WEEK1 cibasic;
 	var AGEM;
 	histogram AGEM/ normal;
-run;
+RUN;
 
 
 /* Question 1.3 */
 DATA WEEK1;
 	set SASDATA.IVF;
 	where PER=4;
-run;
+RUN;
 
 /* a) */
 /* What is the interquartile range of the birth weight? */
 ods select QUANTILES;
 PROC UNIVARIATE data=WEEK1 cipctldf;
   var BW;
-run;
+RUN;
 
 /* p25 p50 p75 quantiles in MEANS */
 PROC MEANS data=WEEK1 qrange;
 	var BW;
-run;
+RUN;
 
 /* b) */
 /* TODO */
 DATA IQRRANGE;
-	SET WEEK1;
-	IF BW < 3365 + 870 THEN count= 1; 
-	IF BW > 3365 - 870 THEN count= 1; 
-	ELSE count=0;
-run;
+	set WEEK1;
+	if BW < 3365 + 870 then count= 1; 
+	if BW > 3365 - 870 then count= 1; 
+	else count=0;
+RUN;
 
 PROC FREQ data=IQRRANGE;
 	tables count;
-Run;
+RUN;
 
 /* c) */
 /* λ ∈ {−2,−1/2,0,1/2,2} */
 DATA WEEK1BOXCOX; 
-	SET WEEK1;
+	set WEEK1;
 	AGEMMINUS2 = (-1/2)*(AGEM**-2 -1); 
 	AGEMMINUS1 = (-1)*(AGEM**-1 -1); 
 	AGEMMINUS12 = (-2)*(AGEM**-(0.5)-1); 
 	AGEM0 = log(AGEM);
 	AGEMPLUS12 = (2)*(AGEM**(1/2) -1); 
 	AGEMPLUS2 = (0.5)*(AGEM**(2) -1);
-run;
+RUN;
 
 ods select histogram;
 PROC UNIVARIATE data=WEEK1BOXCOX; 
@@ -123,23 +123,23 @@ PROC UNIVARIATE data=WEEK1BOXCOX;
    	histogram AGEM0 /normal;
   	histogram AGEMPLUS12 /normal;
    	histogram AGEMPLUS2 /normal;
-run;
+RUN;
 /* Becomes normal at λ = 2 */
 
 /* d) Prediction Interval */
 /* TODO  */
-proc reg data=WEEK1;
-     model BW= / cli alpha=0.05;
-run;
+PROC REG data = WEEK1;
+     model BW = / cli alpha=0.05;
+RUN;
 
 /* e) */
-/* Use means, or show data and manually look up */
-PROC MEANS data=WEEK1 max;
+/* Use MEANS, or show DATA and manually look up */
+PROC MEANS data = WEEK1 max;
 	var bw;
-run;
+RUN;
 
 /* Min and Max of cols in general */
-proc iml;
+PROC IML;
 use WEEK1;
 read all var _NUM_ into X[c=varNames];
 close WEEK1;
@@ -147,40 +147,40 @@ close WEEK1;
 minC = X[><, ];    /* row vector contains min of columns */
 maxC = X[<>, ];    /* row vector contains max of columns */
 print (minC//maxC)[r={"Min" "Max"} c=varNames];
-run;
+RUN;
 
 /* f) */
 /* boys (SEX = 1) or girls (SEX = 0)  */
-data week1_girl;
+DATA WEEK1_GIRL;
 	set WEEK1;
 	where SEX = 0;
-run;
+RUN;
 
-data week1_boy;
+DATA WEEK1_BOY;
 	set WEEK1;
 	where SEX = 1;
-run;
+RUN;
 
-proc freq data=week1;
+PROC FREQ data=week1;
 	tables sex;
-run;
+RUN;
 
 /* Girls */
-proc means data=week1_girl mean var n skew kurt;
+PROC MEANS data=WEEK1_GIRL mean var n skew kurt;
 	var BW;
-run;
+RUN;
 
-proc means data=week1_boy mean var n skew kurt;
+PROC MEANS data=WEEK1_BOY mean var n skew kurt;
 	var BW;
-run;
+RUN;
 
 /* g) */
 /* TODO */
 
 /* Question 1.4 */
 DATA WEEK1_CUSTOM; 
-   INPUT value; 
-   DATALINES; 
+   input value; 
+   datalines; 
 	25.0 
 	27.4 
 	17.1 
@@ -197,44 +197,44 @@ DATA WEEK1_CUSTOM;
 RUN; 
 
 /* a) */
-proc means data=WEEK1_CUSTOM mean var skew kurt;
-run;
+PROC MEANS data=WEEK1_CUSTOM mean var skew kurt;
+RUN;
 
 /* Extra histogram plot */
 ods select HISTOGRAM;
 PROC UNIVARIATE data=WEEK1_CUSTOM;
-   HISTOGRAM value/NORMAL;
-   QQPLOT    value/NORMAL;
-   PPPLOT 	 value/NORMAL;
+   histogram value/normal;
+   qqplot    value/normal;
+   ppplot 	 value/normal;
 RUN;
 
 /* b) Confidence Interval */
 ods select BasicIntervals;
 PROC UNIVARIATE data=WEEK1_CUSTOM cibasic(alpha=0.05);
    var value;
-run;
+RUN;
 
 /* c) Prediction Interval */
-proc means data=WEEK1_CUSTOM mean std n; 
+PROC MEANS data=WEEK1_CUSTOM mean std n; 
 	var value;
     output out=custom_sumstat;
-run;
+RUN;
 
-proc transpose data=custom_sumstat out=value_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
+PROC transpose data=custom_sumstat out=value_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
 	by _type_ _freq_;
 	id _stat_;
-run;
+RUN;
 
-data value_PI;
+DATA value_PI;
 	set value_PI;
-	T = QUANTILE("T", 1 - 0.01/2, N-1); 
+	T = quantile("T", 1 - 0.01/2, N-1); 
 	LPL = MEAN - T * std*sqrt((N+1)/ N); 
 	UPL = MEAN + T * std*sqrt((N+1)/ N);
-run;
+RUN;
 
-proc print DATA=value_PI; 
+PROC PRINT data=value_PI; 
 	var LPL UPL;
-run;
+RUN;
 
 /* Question 1.5 */
 /* 95% confidence interval for log(μ) equal to (−0.137, 1.128) */
@@ -252,33 +252,33 @@ run;
 DATA WEEK1;
 	set SASDATA.IVF;
 	where PER=4;
-run;
+RUN;
 
 DATA WEEK1;
 	set WEEK1;
 	AG = log(44 - GA);
-run;
+RUN;
 
-proc means data=WEEK1 mean std n; 
+PROC MEANS data=WEEK1 mean std n; 
 	var AG;
     output out=gal_sumstat;
-run;
+RUN;
 
-proc transpose data=gal_sumstat out=gal_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
+PROC transpose data=gal_sumstat out=gal_PI (drop= _TYPE_ _FREQ_ _NAME_ _LABEL_);
 	by _type_ _freq_;
 	id _stat_;
-run;
+RUN;
 
-data gal_PI;
+DATA gal_PI;
 	set gal_PI;
-	T = QUANTILE("T", 1 - 0.05/2, N-1); 
+	T = quantile("T", 1 - 0.05/2, N-1); 
 	LPL = MEAN - T * std*sqrt((N+1)/ N); 
 	UPL = MEAN + T * std*sqrt((N+1)/ N);
-run;
+RUN;
 
-proc print DATA=gal_PI; 
+PROC PRINT data=gal_PI; 
 	var LPL UPL;
-run;
+RUN;
 /* PI: (0.60957, 2.38299) */
 
 /* b) Create a 95% confidence interval for the mean of the transformed 
@@ -287,58 +287,103 @@ run;
 DATA WEEK1_Q6;
 	set WEEK1;
 	GAL = log(44 - GA);
-run;
+RUN;
 
 ods select BasicIntervals;
 PROC UNIVARIATE data=WEEK1_Q6 cibasic(alpha=0.05);
    var GAL;
-run;
+RUN;
 /* Can't convert Log(44 - GA) to work for GA */
 
 /* c)  */
+/* Confidence interval median */
 ods select HISTOGRAM;
 PROC UNIVARIATE data=WEEK1;
-   HISTOGRAM GA/NORMAL;
-   QQPLOT    GA/NORMAL;
-   PPPLOT 	 GA/NORMAL;
+   histogram GA/normal;
+   qqplot    GA/normal;
+   ppplot 	 GA/normal;
+RUN;
+/* So not normally distributed */
+
+ods select Quantiles;
+PROC UNIVARIATE data=WEEK1 cipctldf cipctlnormal;
+	var GA;
 RUN;
 
-/* d-g) */
-/* TODO */
+/* d) */
+DATA WEEK1_Q6;
+	set WEEK1;
+	if GA <= 38 then PRE_38 = 1;
+	else PRE_38 = 0;
+RUN;
 
+/* e) */
+PROC SQL;
+	SELECT avg(FIS)
+	FROM WEEK1_Q6
+	WHERE PRE_38 = 1;
+QUIT;
+
+PROC SQL;
+	SELECT avg(FIS)
+	FROM WEEK1_Q6
+	WHERE PRE_38 = 0;
+QUIT;
+
+PROC IML;	
+	use WEEK1_Q6 where(PRETERM=1);
+		read all var{FIS};
+	close WEEK1_Q6;
+	
+	avg = mean(FIS);
+	
+	A = avg;
+	create DATA from A[colname={'percentage'}];
+		append from A;
+	close DATA;
+RUN;
+
+/* f) */
+PROC FREQ data=WEEK1_Q6;
+	where PRE_38 = 1;
+	tables FIS /binomial(wald wilson exact level=2) alpha=0.1;
+RUN;
+
+/* g) */
+/* For exact intervals we have to know the distribution */
 
 
 /* Question 1.7 */
-%macro samples(dataset=,ns=,n=);
-	proc surveyselect data=&dataset NOPRINT method=urs n=&n out=FINAL;
-run;
+%macro samples(DATAset=,ns=,n=);
+	PROC surveyselect DATA=&DATAset NOPRINT method=urs n=&n out=FINAL;
+RUN;
 
-data FINAL;
+DATA FINAL;
 	set FINAL; 
 	sampleno = 1;
-run;
+RUN;
 
 %do sn = 2 %to &ns;
-	proc surveyselect data=&dataset NOPRINT 
+	PROC surveyselect DATA=&DATAset NOPRINT 
 	method=urs n=&n out=SAMPLEI;
-run;
+RUN;
 
-data SAMPLEI;
+DATA SAMPLEI;
 	set SAMPLEI;
 	sampleno = &sn;
-run;
+RUN;
 
-data FINAL;
+DATA FINAL;
 	set Final SAMPLEI;
-run;
+RUN;
 %end;
 
-proc dataset library=work NOPRINT;
+PROC DATASETS library=work NOPRINT;
 	delete SAMPLEI;
-run;
+RUN;
 %mend;
 
-%samples(dataset=WEEK1, ns=1000, n=10);
+%samples(DATAset=WEEK1, ns=1000, n=10);
 
 /* a-c) */
 /* TODO */
@@ -352,11 +397,11 @@ DATA WEEK1;
 	set SASDATA.IVF;
 	where PER=4; AGEMB = (AGEM<30); 
 	keep AGEMB AGEM;
-run;
+RUN;
 
 PROC FREQ data=WEEK1;
  tables AGEMB /binomial(wald wilson exact level=2) alpha=0.05;
-run;
+RUN;
 
 
 

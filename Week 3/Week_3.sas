@@ -35,3 +35,44 @@ run;
 proc corr data=GUMC spearman; 
 	var X Y;
 run;
+
+/* b) */
+
+
+/* c) */
+
+
+/* Question 3.2 */
+DATA IVF;
+	SET SASDATA.IVF;
+	IMP = IMP + (ranuni(1)-0.5); 
+run;
+
+/* a) */
+PROC TRANSPOSE OUT=WIDE_IVF(DROP = _NAME_ _LABEL_) DATA=IVF PREFIX=IMP;
+	BY ID;
+	ID PER;
+	VAR IMP; 
+RUN;
+
+/* b) */
+ods graphics on;
+proc corr data=WIDE_IVF plots=scatter(ellipse=none); 
+	var IMP10 IMP18;
+run;
+ods graphics off;
+
+proc corr data=WIDE_IVF kendall; 
+	var IMP10 IMP18;
+run;
+
+proc corr data=WIDE_IVF spearman; 
+	var IMP10 IMP18;
+run;
+
+/* c) */
+
+/* Question 3.3 */
+
+
+
