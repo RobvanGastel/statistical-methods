@@ -2,7 +2,7 @@ LIBNAME SASDATA "/folders/myfolders/statistical-methods/data";
 
 
 %Macro SIM_Gum(alpha=, nsim=, seed=); 
-proc iml;
+PROC IML;
 call streaminit(&seed);
 alpha=&alpha;
 do i=1 to &nsim by 1; 
@@ -21,20 +21,20 @@ end;
 Total=X||Y||YI;
 create GumC from Total [colname={'X','Y','YI'}]; append from Total;
 close GumC;
-quit;
+QUIT;
 %mend SIM_Gum;
 
 %SIM_Gum(nsim=1000, alpha=5, seed=12345);
 
 /* Question 3.1 */
 /* a) */
-proc corr data=GUMC kendall; 
+PROC CORR data=GUMC kendall; 
 	var X Y;
-run;
+RUN;
 
-proc corr data=GUMC spearman; 
+PROC CORR data=GUMC spearman; 
 	var X Y;
-run;
+RUN;
 
 /* b) */
 
@@ -46,7 +46,7 @@ run;
 DATA IVF;
 	SET SASDATA.IVF;
 	IMP = IMP + (ranuni(1)-0.5); 
-run;
+RUN;
 
 /* a) */
 PROC TRANSPOSE OUT=WIDE_IVF(DROP = _NAME_ _LABEL_) DATA=IVF PREFIX=IMP;
@@ -57,18 +57,18 @@ RUN;
 
 /* b) */
 ods graphics on;
-proc corr data=WIDE_IVF plots=scatter(ellipse=none); 
+PROC CORR data=WIDE_IVF plots=scatter(ellipse=none); 
 	var IMP10 IMP18;
-run;
+RUN;
 ods graphics off;
 
-proc corr data=WIDE_IVF kendall; 
+PROC CORR data=WIDE_IVF kendall; 
 	var IMP10 IMP18;
-run;
+RUN;
 
-proc corr data=WIDE_IVF spearman; 
+PROC CORR data=WIDE_IVF spearman; 
 	var IMP10 IMP18;
-run;
+RUN;
 
 /* c) */
 
