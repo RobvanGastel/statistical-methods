@@ -52,7 +52,7 @@ RUN;
 /* Question 2.2 */
 DATA WEEK2_Q2;
 	set WEEK2;
-	where ID <= 100 and TRT=0 OR TRT=1;
+	where ID <= 100;
 RUN;
 
 PROC FREQ data=WEEK2_Q2;
@@ -62,18 +62,33 @@ RUN;
 /* a) */
 /* Compare treatment (TRT) on birth weight (BW) */
 /* H0: m_1 = m_2 vs H1: m_1 != m_2 */
+/* TODO */
 ods output WilcoxonScores=WRS (keep= Class N SumOfScores); 
-PROC NPAR1WAY data=WEEK2_Q2 correct=NO;
+PROC NPAR1WAY data=WEEK2_Q2 correct=no;
    class TRT;
    var BW;
    exact wilcoxon/mc;
 RUN;
 
 /* b) */
-
+/* TODO */
+PROC IML;
+	use WRS;
+	read all var{N SumOfScores};
+	close WRS;
+		
+	G={1 , 0, 2};
+	U=SumOfScores-N#(N+1)/2;
+	P=U/prod(N);
+		
+	A=G||N||U||P;
+	
+	create MWU from A [colname={'Group' 'N' 'U' 'P'}]; 
+	append from A;       
+	close MWU;
+QUIT;
 
 /* c) */
-
 
 /* d) */
 
@@ -83,14 +98,7 @@ RUN;
 
 
 /* Question 2.3 */
-
-ods output WilcoxonScores=WRS (keep= Class N SumOfScores); 
-PROC NPAR1WAY data=WEEK2_Q2 correct=NO;
-   class FIS;
-   var AGEM;
-   exact wilcoxon / mc;
-RUN;
-
+/* a) */
 %macro mann_whitney_u(dataset, class, var); 
 
 ods select none;
@@ -103,19 +111,24 @@ PROC NPAR1WAY data=&dataset;
 RUN;
 
 PROC IML;
-use WRS;
-read all var{N SumOfScores}; close WRS;
-G={1 , 2}; U=SumOfScores-N#(N+1)/2; P=U/prod(N);
- A=G||N||U||P;
-create MWU from A [colname={'Group' 'N' 'U' 'P'}]; append from A;
-close MWU;
-QUIT;
-
-ods select all;
-
+	use WRS;
+	read all var{N SumOfScores}; 
+	close WRS;
+	
+	G={1 , 2}; 
+	U=SumOfScores-N#(N+1)/2; P=U/prod(N);
+	A=G||N||U||P;
+	
+	create MWU from A [colname={'Group' 'N' 'U' 'P'}]; 
+	append from A;
+	close MWU;
+	
+	ods select all;
 %mend;
 
 %mann_whitney_u(WEEK2_2, FIS, AGEM);
+
+/* b) */
 
 /* Question 2.4 */
 DATA WEEK2_Q4;
@@ -131,16 +144,15 @@ DATA BW_HEAVY;
 RUN;
 
 /* b) */
+/* H0: μ(BW>4000) = μ(BW<4000) */
 PROC TTEST data=BW_HEAVY;
 	class heavy;
 	var GA;
 RUN;
-
-/* H0: μ (BW>4000) =  μ (BW<4000) */
-/* F-Test  */
-/* Test statistic: 5.30 with p-value: .0001 */
-/* Thus we can not assume equal variance */
-/* Unequal, Test statistic: -9.07 with p-value:	.0001 */
+/* F-Test */
+/* Test statistic = 5.30 and p-value = .0001 */
+/* Thus we can not assume equal variance, */
+/* Test statistic = -9.07 and p-value = .0001 */
 /* Therefore we reject H0 */
 
 /* c) */
@@ -151,32 +163,19 @@ DATA GA_LATE;
 RUN;
 
 /* d) */
+/* H0: μ(GA>41) = μ(GA<41) */
 PROC TTEST data=GA_LATE;
 	class late;
 	var BW;
 RUN;
-
-/* H0: μ (GA>41) =  μ (GA<41) */
 /* F-test */
-/* With T statistic: 1.77 and p-value: 0.0407 */
-/* So we reject the assumption of equal variance */
-/* Under unequal variance assumption  */
-/* T statistic: -6,55 with p-value: 0.0001 */
-/* We reject the H0 */
+/* Test statistic = 1.77 and p-value = 0.0407 */
+/* Thus we can not assume equal variance, */
+/* Test statistic = -6,55 and p-value = 0.0001 */
+/* Therefore we reject the H0 */
 
 /* e) */
 /* TODO */
-
-/* Question 2.5 */
-/* TODO */
-
-/* Question 2.7 */
-/* a) */
-DATA WEEK2_7;
-	set WEEK2;
-	keep FIS TRT;
-RUN;
-
 
 
 
