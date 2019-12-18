@@ -52,11 +52,20 @@ RUN;
 /* Question 2.2 */
 DATA WEEK2_Q2;
 	set WEEK2;
-	where ID <= 100;
+	where ID <= 100 and TRT = 0 or TRT = 1;
 RUN;
 
 PROC FREQ data=WEEK2_Q2;
 	tables TRT;
+RUN;
+
+/* or SQL */
+PROC SQL;
+	CREATE TABLE WEEK2_Q2 AS
+	SELECT TRT, BW
+	FROM WEEK2
+	WHERE ID <= 100
+	AND TRT = 0 OR TRT = 2;
 RUN;
 
 /* a) */
@@ -70,6 +79,7 @@ PROC NPAR1WAY data=WEEK2_Q2 correct=no;
    exact wilcoxon/mc;
 RUN;
 
+
 /* b) */
 /* TODO */
 PROC IML;
@@ -77,7 +87,7 @@ PROC IML;
 	read all var{N SumOfScores};
 	close WRS;
 		
-	G={1 , 0, 2};
+	G={0, 1};
 	U=SumOfScores-N#(N+1)/2;
 	P=U/prod(N);
 		
@@ -90,6 +100,7 @@ QUIT;
 
 /* c) */
 
+
 /* d) */
 
 /* e) */
@@ -99,32 +110,62 @@ QUIT;
 
 /* Question 2.3 */
 /* a) */
-%macro mann_whitney_u(dataset, class, var); 
-
-ods select none;
-PROC NPAR1WAY data=&dataset;
-	var &var;
-	class &class;
-	exact wilcoxon / mc;
-	ods output WilcoxonScores=OUT_SCORES; 
-	ods output WilcoxonTest=OUT_TEST;
-RUN;
-
-PROC IML;
-	use WRS;
-	read all var{N SumOfScores}; 
-	close WRS;
-	
-	G={1 , 2}; 
-	U=SumOfScores-N#(N+1)/2; P=U/prod(N);
-	A=G||N||U||P;
-	
-	create MWU from A [colname={'Group' 'N' 'U' 'P'}]; 
-	append from A;
-	close MWU;
-	
+%MACRO mann_whitney_u(dataset, class, var);
+	ods select none;
+	PROC NPAR1WAY data=&dataset;
+		var &var;
+		class &class;
+		exact wilcoxon/mc;
+		ods output WilcoxonScores=OUT_SCORES(
+			rename=(SumOfScores=S));
+		ods output WilcoxonTest=OUT_TEST(
+			rename=(cValue1=P_VALUE) where =
+			( Name1 =" P2_WIL "));
+	RUN;
 	ods select all;
-%mend;
+	
+	DATA OUT_SCORES;
+		set OUT_SCORES; 
+		CLASS_ID = _N_ - 1;
+	RUN;
+	
+	PROC TRANSPOSE data=OUT_SCORES
+			out=OUT_N(drop=_NAME_) prefix=N;
+		id CLASS_ID;
+		var N;
+	RUN;
+
+	PROC TRANSPOSE data=OUT_SCORES
+			out=OUT_S(drop=_NAME_ _LABEL_) PREFIX=S;
+		id CLASS_ID;
+		var S;
+	RUN;
+	
+	DATA RESULT;
+		merge OUT_N OUT_S OUT_TEST(keep=P_VALUE); 
+		U0 = S0 - N0 * (N0+1)/2;
+		U1 = S1 - N1 * (N1+1)/2;
+		P0 = U0 / (N0*N1);
+		P1 = U1 / (N0*N1);
+	RUN;
+
+	title "Mann Whitney U test";
+	PROC PRINT data=OUT_SCORES label noobs;
+		var CLASS_ID CLASS; 
+		label CLASS_ID="class"
+		CLASS="group identifier";
+	RUN;
+	title;
+	
+	PROC PRINT data=RESULT;
+		var P_VALUE U0 U1 P0 P1;
+		label P_VALUE="p-value"
+		U0="statistic (U0)" 
+		U1="statistic (U1)" 
+		P0="P(class0 > class1)" 
+		P1="P(class0 <= class1)";
+	RUN;
+%MEND;
 
 %mann_whitney_u(WEEK2_2, FIS, AGEM);
 
