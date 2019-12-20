@@ -100,7 +100,6 @@ QUIT;
 
 /* c) */
 
-
 /* d) */
 
 /* e) */
@@ -167,9 +166,10 @@ QUIT;
 	RUN;
 %MEND;
 
-%mann_whitney_u(WEEK2_2, FIS, AGEM);
+%mann_whitney_u(WEEK2_Q2, TRT, BW);
 
 /* b) */
+/* TODO */
 
 /* Question 2.4 */
 DATA WEEK2_Q4;
@@ -198,7 +198,7 @@ RUN;
 
 /* c) */
 DATA GA_LATE;
-	SET WEEK2_4;
+	SET WEEK2_Q4;
 	if GA > 41 then late=1;
 	else late=0;
 RUN;
@@ -216,7 +216,47 @@ RUN;
 /* Therefore we reject the H0 */
 
 /* e) */
-/* TODO */
+/* As we're using the mean with a relatively large */
+/* sample size n=253. Based on the CLT the results */
+/* Are probably reliable. */
+
+/* Question 2.5 */
+/* It's a reasonable approximation as the count */
+/* in each cell > 5. */
+/* H0: p_1 = p_2 */
+DATA WEEK2_Q5; 
+   input treatment $ low $ high $ level@@; 
+   datalines; 
+	1 77 23 2
+	2 81 19 1
+ ;
+RUN;
+
+PROC FREQ data=WEEK2_Q5;
+	tables TREATMENT*LEVEL;
+RUN;
+
+
+Data CU;
+Input BATCH$ MEASUREMENT@@; datalines;
+1 102 1 104 1 102 1 97 1 99
+1 101 1 103 1 98 1 96 1 97
+2 99 2 97 2 99 2 100 2 99
+2 96 2 99 2 98 2 97 2 98
+;
+run;
+
+Data CU;
+	Set CU;
+	If MEASUREMENT<97 OR MEASUREMENT>103 then OSPECLIM=1; Else OSPECLIM=0;
+run;
+
+PROC PRINT data=CU;
+RUN;
+
+Proc freq data=CU;
+Table BATCH*OSPECLIM / chisq; Exact chisq;
+RUN;
 
 
 
