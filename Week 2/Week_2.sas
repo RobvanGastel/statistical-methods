@@ -462,15 +462,16 @@ RUN;
 		COUNT0 = COUNT; 
 		N0 = N;
 		P0 = COUNT0 / N0; 
-		where SEX = 0; 
+		where &class = 0; 
 		keep COUNT0 N0 P0; 
 	RUN;
 	
 	DATA OUT1;
 		set OUT;
-		COUNT1 = COUNT; N1 = N;
+		COUNT1 = COUNT; 
+		N1 = N;
 		P1 = COUNT1 / N1; 
-		where SEX = 1; 
+		where &class = 1; 
 		keep COUNT1 N1 P1; 
 	RUN;
     
@@ -634,9 +635,3 @@ PROC NPAR1WAY data=WEEK2_Q8;
 	exact ks/mc;
 RUN;
 /* Test statistic = 0.5 and p-value = 0.0964 */
-
-
-
-
-
-
