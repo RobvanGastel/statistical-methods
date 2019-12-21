@@ -175,7 +175,6 @@ QUIT;
 /* d) */
 /* H0: F_1 = F_2 vs H1: F_1 != F_2 */
 /* F being CDF, and 1 := (TRT = 1) etc. */
-
 DATA WEEK2_Q2_d; 
 	set WEEK2_Q2; 
 	if TRT < 2; /* NE is the same as != */
@@ -317,7 +316,13 @@ RUN;
 	RUN;
 	
 	title "Mann Whitney U test";
-	PROC PRINT data=RESULT;
+	PROC PRINT data=OUT_SCORES label noobs;
+		var CLASS_ID CLASS; 
+		label CLASS_ID="class"
+		CLASS="group identifier";
+	RUN;
+
+	PROC PRINT data=RESULT label;
 		var P_VALUE P_KRUS U0 U1 P0 P1;
 		label P_VALUE = "p-value Wilcoxon Test"
 		P_KRUS= "p-value Kruskal-Wallis Test"
@@ -327,7 +332,6 @@ RUN;
 		P1="P(class0 <= class1)";
 	RUN;
 	title;
-	
 %MEND;
 
 /* b) */
@@ -370,6 +374,7 @@ PROC TTEST data=BW_HEAVY;
 	class heavy;
 	var GA;
 RUN;
+
 /* F-Test */
 /* Test statistic = 5.30 and p-value = .0001 */
 /* Thus we can not assume equal variance, */
@@ -404,22 +409,231 @@ RUN;
 /* It's a reasonable approximation as the count */
 /* in each cell > 5. */
 /* H0: p_1 = p_2 */
-DATA WEEK2_Q5; 
-   input treatment $ low $ high $ count@@; 
-   datalines; 
-	1 77 23 100 
-	2 81 19 100 
- ;
+DATA WEEK2_Q5;
+	input treatment$ high$ count;
+	datalines;
+	1 1 23
+	2 1 19
+	1 0 77
+	2 0 81
+	;
 RUN;
 
 PROC FREQ data=WEEK2_Q5;
-	tables TREATMENT*LOW /chisq;
-	weight HIGH;
+	tables TREATMENT*HIGH /chisq;
+	weight count;
+	exact chisq;
 RUN;
+/* p-value = 0.4822 */
 
 /* Question 2.6 */
+DATA WEEK2_Q6;
+	set WEEK2;
+	keep SEX FIS;
+RUN;
 
 /* a) */
+PROC FREQ data=WEEK2_Q6;
+	tables FIS*SEX /chisq;
+	exact chisq;
+RUN;
+/* p_hat(SEX=0 & FIS=1) = 31.09 */
+/* p_hat(SEX=1 & FIS=1) = 36.09 */
+/* p_hat(FIS=1) = 33.73 */
+
+PROC TTEST data=WEEK2_Q6;
+	class SEX;
+	var FIS;
+RUN;
+/* For the H0: p_1 = p_2 vs H1: p_1 != p_2 */
+/* We can assume equal so we take pooled, */
+/* test statistic = -0.84 and p-value = 0.4022 */
+
+/* b) */
+%MACRO binary_hypothesis(dataset, var, class); 
+	PROC MEANS data=&dataset n sum noprint;
+		var &var;
+		class &class;
+		output out=OUT n=N sum=COUNT; 
+	RUN;
+
+	DATA OUT0;
+		set OUT;
+		COUNT0 = COUNT; 
+		N0 = N;
+		P0 = COUNT0 / N0; 
+		where SEX = 0; 
+		keep COUNT0 N0 P0; 
+	RUN;
+	
+	DATA OUT1;
+		set OUT;
+		COUNT1 = COUNT; N1 = N;
+		P1 = COUNT1 / N1; 
+		where SEX = 1; 
+		keep COUNT1 N1 P1; 
+	RUN;
+    
+    DATA OUT;
+		merge OUT0 OUT1;
+		P = (COUNT0 + COUNT1) / (N0 + N1);
+		STAT = (P0 - P1) / sqrt(P * (1-P) * (1/N0 + 1/N1));
+		CHISQ = STAT **2;
+		P_VALUE = 2*min(cdf("normal", STAT, 0, 1), 1-cdf("normal", STAT, 0, 1)); 
+	RUN;
+	
+	PROC PRINT data=OUT; 
+		var STAT CHISQ P_VALUE; 
+	RUN;
+%MEND;
+
+/* c) */
+/* The gives the same output, */
+%binary_hypothesis(WEEK2_Q6, FIS, SEX);
+
+/* d) */
+/* With the Chi-Squared test, */
+/* We get Test statistic = -0.83774,(T)^2 = 0.70181  */
+/* and p-value = 0.40218 */
+
+/* Question 2.7 */
+DATA WEEK2_Q7;
+	set WEEK2;
+	keep FIS TRT;
+RUN;
+
+/* a) */
+/* Chi-Squared test */
+DATA WEEK2_Q7_a;
+	SET WEEK2_Q7;
+	if TRT < 2;
+	PROC FREQ;
+		tables FIS*TRT /chisq;
+		exact chisq;
+RUN;
+
+DATA WEEK2_Q7_a;
+	SET WEEK2_Q7;
+	if TRT NE 1;
+	PROC FREQ;
+		tables FIS*TRT /chisq;
+		exact chisq;
+RUN;
+
+DATA WEEK2_Q7_a;
+	SET WEEK2_Q7;
+	if TRT > 0;
+	PROC FREQ;
+		tables FIS*TRT /chisq;
+		exact chisq;
+RUN;
+
+
+/* Fisher test */
+DATA WEEK2_Q7_a;
+	SET WEEK2_Q7;
+	if TRT < 2;
+	PROC FREQ;
+		tables FIS*TRT;
+		exact fisher;
+RUN;
+
+DATA WEEK2_Q7_a;
+	SET WEEK2_Q7;
+	if TRT NE 1;
+	PROC FREQ;
+		tables FIS*TRT;
+		exact fisher;
+RUN;
+
+DATA WEEK2_Q7_a;
+	SET WEEK2_Q7;
+	if TRT > 0;
+	PROC FREQ;
+		tables FIS*TRT;
+		exact fisher;
+RUN;
+
+/* Groups | Chi Statistic | P-value | Fisher Stat | P-value */
+/* 0 1	  | 2.8533		  | 0.0912  | 2.8533	  | 0.1202  */
+/* 0 2	  | 4.9708		  | 0.0258  | 4.9708 	  | 0.0347  */
+/* 1 2	  | 0.0458		  | 0.8306  | 0.0458 	  | 0.8563  */
+
+/* b) */
+PROC FREQ data=WEEK2_Q7;
+	tables FIS*TRT /chisq;
+	exact chisq;
+RUN;
+
+/* Test statistic = 5.7210 and p-value = 0.0572 */
+/* We can't reject H0 */
+
+/* Question 2.8 */
+DATA WEEK2_Q8;
+	input BATCH OUTPUT @@; /* Skip $ for not numeric */
+	datalines;
+1 102 1 104 1 102 1 97 1 99 1 101 1 103 1 98 1 96 1 97
+2 99 2 97 2 99 2 100 2 99 2 96 2 99 2 98 2 97 2 98
+	;
+RUN;
+
+/* a) */
+/* H0: σ_2(BATCH=1) = σ_2(BATCH=2) */
+
+/* F-Test */
+/* According to F statistic we assume unequal variance */
+PROC TTEST data=WEEK2_Q8; 
+	class BATCH;
+	var OUTPUT;
+RUN;
+/* Test statistic = 5.36 and p-value = 0.0199 */
+
+/* Bartlett's test */
+PROC GLM data=WEEK2_Q8; 
+	class BATCH;
+	model OUTPUT = BATCH;
+	means BATCH / hovtest=BARTLETT;
+RUN;
+/* Test statistic = 5.4128 and p-value = 0.0200 */
+
+
+/* Levene's test */
+PROC GLM data=WEEK2_Q8; 
+	class BATCH;
+	model OUTPUT = BATCH;
+	means BATCH / hovtest=LEVENE;
+RUN;
+/* Test statistic = 10.86 and p-value =  0.0040 */
+/* All tests have approximately the same p-values. */
+/* And we don't reject the H0 */
+
+/* b) */
+
+/* T-Test */
+PROC TTEST data=WEEK2_Q8; 
+	class BATCH;
+	var OUTPUT;
+RUN;
+/* Test statistic = 1.73 and p-value = 0.1080 */
+
+/* c) */
+PROC NPAR1WAY data=WEEK2_Q8 wilcoxon; 
+	class BATCH;
+	var OUTPUT;
+RUN;
+/* Test statistic = 120.5 and p-value = 0.2503 */
+
+/* d) */
+%mann_whitney_u(WEEK2_Q8, BATCH, OUTPUT);
+/* Test statistic (U_0) = 65.5 and p-value = 0.345 */
+
+/* e) */
+PROC NPAR1WAY data=WEEK2_Q8; 
+	class BATCH;
+	var OUTPUT;
+	exact ks/mc;
+RUN;
+/* Test statistic = 0.5 and p-value = 0.0964 */
 
 
 
