@@ -338,10 +338,16 @@ DATA gal_PI;
 	UPL = MEAN + T * std*sqrt((N+1)/ N);
 RUN;
 
-PROC PRINT data=gal_PI; 
-	var LPL UPL;
+DATA gal_PI;
+	set gal_PI;
+	LPL = 44 - exp(LPL);
+	UPL = 44 - exp(UPL);
 RUN;
-/* PI: (0.60957, 2.38299) */
+
+PROC PRINT data=gal_PI;
+	var UPL LPL;
+RUN;
+/* PI: (33.1628, 42.1604) */
 
 /* b)  */
 /* Can't convert Log(44 - GA) to work for GA */
