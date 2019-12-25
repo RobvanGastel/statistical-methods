@@ -113,56 +113,19 @@
 
 /* Week 3: Dependence */
 
-/* Copula macros */
-/* TODO: Edit marginals */
+/* Copula simulation macro's */
+/* Addition with marginal dataset and uniform variable */
+/* To be able to make a more accurate scatter plot */
 
-/* Simulation of Gaussian copula */
-%MACRO SIM_GC(rho=, nsim=, seed=);
-	PROC IML;
-		use marginals;
-		read all var{U_IMP4};
-		close marginals;
-		
-		U=U_IMP4;
-		
-		call streaminit(&seed);
-		rho=&rho;
-		
-		do i=1 to &nsim by 1;
-		U1=U[i];
-		U2=rand('Uniform');
-		
-		start Func(x) global(U1,U2,rho);
-		return(CDF('Normal',quantile('NORMAL', x),rho*quantile('NORMAL',U1),(1-rho**2))-U2);
-		finish;
-		
-		intervals = {0.00001 0.99999};        
-		U2C = froot("Func", intervals);
-		
-		X=X//U1;
-		Y=Y//U2C;
-		YI=YI//U2;
-		end;
-		
-		Total=X||Y||YI;
-		
-		create GC from Total [colname={'X','Y','YI'}]; 
-		append from Total;       
-		close GC;
-	QUIT;
-%MEND SIM_GC;
-
-/* Simulation of Gumbel’s copula */
-%MACRO SIM_Gum(alpha=, nsim=, seed=);
+%MACRO SIM_Gum(alpha=, nsim=, seed=, dataset=, uvar=);
 	PROC IML;
 		call streaminit(&seed);
 		alpha=&alpha;
 		
-		use marginals;
-		read all var{U_IMP4};
-		close marginals;
-		
-		U=U_IMP4;
+		use &dataset;
+		read all var{&uvar};
+		close &dataset;
+		U=&uvar;
 		
 		do i=1 to &nsim by 1;
 		U1=U[i];
@@ -188,17 +151,51 @@
 	QUIT;
 %MEND SIM_Gum;
 
+/* Simulation of the Gaussian copula */
+%MACRO SIM_GC(rho=, nsim=, seed=, dataset=, uvar=);
+	PROC IML;
+		call streaminit(&seed);
+		rho=&rho;
+		
+		use &dataset;
+		read all var{&uvar};
+		close &dataset;
+		U=&uvar;
+		
+		do i=1 to &nsim by 1;
+		U1=U[i];
+		U2=rand('Uniform');
+		
+		start Func(x) global(U1,U2,rho);
+		return(CDF('Normal',quantile('NORMAL', x),rho*quantile('NORMAL',U1),(1-rho**2))-U2);
+		finish;
+		
+		intervals = {0.00001 0.99999};        
+		U2C = froot("Func", intervals);
+		
+		X=X//U1;
+		Y=Y//U2C;
+		YI=YI//U2;
+		end;
+		
+		Total=X||Y||YI;
+		
+		create GC from Total [colname={'X','Y','YI'}]; 
+		append from Total;       
+		close GC;
+	QUIT;
+%MEND SIM_GC;
+
 /* Simulation of Clayton's copula */
-%MACRO SIM_Clay(alpha=, nsim=, seed=);
+%MACRO SIM_Clay(alpha=, nsim=, seed=, dataset=, uvar=);
 	PROC IML;
 		call streaminit(&seed);
 		alpha=&alpha;
 		
-		use marginals;
-		read all var{U_IMP4};
-		close marginals;
-		
-		U=U_IMP4;
+		use &dataset;
+		read all var{&uvar};
+		close &dataset;
+		U=&uvar;
 		
 		do i=1 to &nsim by 1;
 		U1=U[i];
@@ -224,16 +221,15 @@
 %MEND SIM_Clay;
 
 /* Simulation of Frank's copula */
-%MACRO SIM_Frk(alpha=, nsim=, seed=);
+%MACRO SIM_Frk(alpha=, nsim=, seed=, dataset=, uvar=);
 	PROC IML;
 		call streaminit(&seed);
 		alpha=&alpha;
 		
-		use marginals;
-		read all var{U_IMP4};
-		close marginals;
-		
-		U=U_IMP4;
+		use &dataset;
+		read all var{&uvar};
+		close &dataset;
+		U=&uvar;
 		
 		do i=1 to &nsim by 1;
 		U1=U[i];
@@ -259,16 +255,15 @@
 %MEND SIM_Frk;
 
 /* Simulation of FGM's copula */
-%MACRO SIM_FGM(alpha=, nsim=, seed=);
+%MACRO SIM_FGM(alpha=, nsim=, seed=, dataset=, uvar=);
 	PROC IML;
 		call streaminit(&seed);
 		alpha=&alpha;
 		
-		use marginals;
-		read all var{U_IMP4};
-		close marginals;
-		
-		U=U_IMP4;
+		use &dataset;
+		read all var{&uvar};
+		close &dataset;
+		U=&uvar;
 		
 		do i=1 to &nsim by 1;
 		U1=U[i];
