@@ -1,3 +1,5 @@
+## Topics
+
 * Tests for normality
 	* Graphical techniques 
 	* Kolmogorov-Smirnov 
