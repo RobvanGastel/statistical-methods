@@ -273,13 +273,13 @@ RUN;
 
 /* Plot of the marginals and wide datasets */
 ods graphics on;
-proc corr data=WEEK3_Q2_W plots=scatter(ellipse=none); 
+PROC CORR data=WEEK3_Q2_W plots=scatter(ellipse=none); 
 	var IMP4 IMP18;
-run;
+RUN;
 
-proc corr data=WEEK3_Q2_M plots=scatter(ellipse=none); 
+PROC CORR data=WEEK3_Q2_M plots=scatter(ellipse=none); 
 	var U_IMP4 U_IMP18;
-run;
+RUN;
 ods graphics off;
 
 /* b) */
@@ -522,70 +522,90 @@ DATA WEEK3_Q3;
 	end;
 RUN;
 
-PROC PRINT data=WEEK3_Q3;  
-	var X Y;  
-RUN;
-
 /* a) */
 /* if X and Y are independent, */
 /* P(X =< 0.7, Y =< 0.7) = F_1(0.7)*F_2(0.7) */
-/* 1.2 * 1.2 = 1.44 */
+/* 0.7 * 0.7 = 0.49 */
 
-PROC CORR data=WEEK3_Q3_a kendall spearman; 
+PROC CORR data=WEEK3_Q3 kendall spearman 
+	plots=scatter(ellipse=none); 
 	var X Y;
 RUN;
 
-/* b) */
-PROC SGPLOT data=WEEK3_Q3_a aspect=1;
-	title "Gumbel's Copula, real data";
-	scatter x=X y=Y / markerattrs=(color='blue' size=6);
+/* Creates uniform marginals, percentiles */
+PROC RANK data=WEEK3_Q3 out=WEEK3_Q3_R;
+      var X Y;
+      ranks X Y;
 RUN;
 
-%SIM_Gum(nsim=1000, alpha=1, seed=6789);
+PROC MEANS data=WEEK3_Q3_R N; 
+	var X Y; 
+RUN;
+
+/* Marginals, use these to look at correlation */
+DATA WEEK3_Q3_M;
+	set WEEK3_Q3_R; 
+	U_X=X/1000; 
+	U_Y=Y/1000;
+RUN;
+
+/* b) */
+PROC SGPLOT data=WEEK3_Q3_M aspect=1;
+	title "real data";
+	scatter x=U_X y=U_Y / markerattrs=(color='blue' size=6);
+RUN;
+
+%SIM_Gum(nsim=1000, alpha=1, seed=6789, dataset=WEEK3_Q3_M, uvar=U_X);
 PROC SGPLOT data=GumC aspect=1;
 	title "Gumbel's Copula, alpha=1";
 	scatter x=X y=Y / markerattrs=(color='blue' size=6);
 RUN;
 
-%SIM_Gum(nsim=1000, alpha=2, seed=6789);
+%SIM_Gum(nsim=1000, alpha=2, seed=6789, dataset=WEEK3_Q3_M, uvar=U_X);
 PROC SGPLOT data=GumC aspect=1;
 	title "Gumbel's Copula, alpha=2";
 	scatter x=X y=Y / markerattrs=(color='blue' size=6);
 RUN;
 
-%SIM_Gum(nsim=1000, alpha=5, seed=6789);
+%SIM_Gum(nsim=1000, alpha=5, seed=6789, dataset=WEEK3_Q3_M, uvar=U_X);
 PROC SGPLOT data=GumC aspect=1;
 	title "Gumbel's Copula, alpha=5";
 	scatter x=X y=Y / markerattrs=(color='blue' size=6);
 RUN;
 
-%SIM_Gum(nsim=1000, alpha=10, seed=6789);
+%SIM_Gum(nsim=1000, alpha=10, seed=6789, dataset=WEEK3_Q3_M, uvar=U_X);
 PROC SGPLOT data=GumC aspect=1;
 	title "Gumbel's Copula, alpha=10";
 	scatter x=X y=Y / markerattrs=(color='blue' size=6);
 RUN;
-/* Most similair to the Gumbell copula with alpha = 1 */
+/* Most similair to the Gumbel's copula with alpha = 1 */
 
 /* c) */
-%SIM_Clay(nsim=1000, alpha=2, seed=6789);
+PROC SGPLOT data=WEEK3_Q3_M aspect=1;
+	title "real data";
+	scatter x=U_X y=U_Y / markerattrs=(color='blue' size=6);
+RUN;
+
+%SIM_Clay(nsim=1000, alpha=2, seed=6789, dataset=WEEK3_Q3_M, uvar=U_X);
 PROC SGPLOT data=CC aspect=1;
 	title "Clayton's Copula, alpha=2";
 	scatter x=X y=Y / markerattrs=(color='blue' size=6);
 RUN;
 
-%SIM_Clay(nsim=1000, alpha=5, seed=6789);
+%SIM_Clay(nsim=1000, alpha=5, seed=6789, dataset=WEEK3_Q3_M, uvar=U_X);
 PROC SGPLOT data=CC aspect=1;
 	title "Clayton's Copula, alpha=5";
 	scatter x=X y=Y / markerattrs=(color='blue' size=6);
 RUN;
 
-%SIM_Clay(nsim=1000, alpha=10, seed=6789);
+%SIM_Clay(nsim=1000, alpha=10, seed=6789, dataset=WEEK3_Q3_M, uvar=U_X);
 PROC SGPLOT data=CC aspect=1;
 	title "Clayton's Copula, alpha=10";
 	scatter x=X y=Y / markerattrs=(color='blue' size=6);
 RUN;
 
-/* d) */
+/* d) - e) */
+/* TODO */
 
 /* Question 3.4 */
 DATA WEEK3_Q4;
@@ -593,18 +613,421 @@ DATA WEEK3_Q4;
 RUN;
 
 /* a) */
+PROC TRANSPOSE out=WEEK3_Q4_W(drop = _NAME_ _LABEL_) 
+		data=WEEK3_Q4 prefix=RESP;
+	by ID;
+	id TIME;
+	var RESP; 
+RUN;
 
+/* If we remove missing values the results don't match */
+/* the answers. */
+/* DATA WEEK3_Q4_W; */
+/* 	set WEEK3_Q4_W; */
+/* 	if cmiss(of _all_) then delete;  */
+/* RUN; */
 
+/* b) */
+PROC CORR data=WEEK3_Q4_W plots=scatter(ellipse=none) 
+		spearman pearson kendall;
+	var RESP1 RESP2;
+RUN;
+/* Pearson rho = 0.47800 and p-value < 0.001 */
+/* Kendall tau = 0.35941 and p-value < 0.001 */
+/* Spearman rho = 0.50477 and p-value < 0.001 */
+/* Thus, we reject the H0 */
 
+/* Creating margins to see the correlation plot */
+PROC RANK data=WEEK3_Q4_W out=WEEK3_Q4_R;
+	var RESP1 RESP2;
+    ranks rank_RESP1 rank_RESP2;
+RUN;
 
+PROC MEANS data=WEEK3_Q4_R N; 
+	var rank_RESP1 rank_RESP2;
+RUN;
 
+DATA WEEK3_Q4_M;
+	set WEEK3_Q4_R; 
+	U_RESP1=rank_RESP1/716; /*694; After cleaning */
+	U_RESP2=rank_RESP2/716; /*694; */
+RUN;
 
+PROC CORR data=WEEK3_Q4_M plots=scatter(ellipse=none);
+	var U_RESP1 U_RESP2;
+RUN;
 
+/* c) */
+/* These are already given. */
 
+/* d) */
+/* Bias adjustment = no is important */
+PROC CORR data=WEEK3_Q4_W pearson fisher(biasadj=no);
+	var RESP1 RESP2;
+RUN;
+/* The CI is given by (0.419252, 0.532766) */
 
+/* e) */
+%SpearmanRho(rho=0.50477);
+%KendallTau(tau=0.35941);
+/* Both alpha = 1.51431 and alpha = 1.617345 are outside */
+/* of the supported range for FGM's Copula */
 
+/* f) */
+/* The alpha = 1.1221218 for Clayton's Copula using tau */
 
+/* g) */
+/* The alpha = 1.0935697 for Clayton's Copula using rho */
+/* This is within reasonable range of f. */
 
+/* h) */
+/* Taking the averages for Clayton's alpha = 1.10784575 */
+/* and frank's alpha = 3.5580449 */
+%SIM_Clay(nsim=700, alpha=1.1221218, seed=6789, dataset=WEEK3_Q4_W, uvar=RESP1);
+%SIM_Frk(nsim=700, alpha=3.5580449, seed=6789, dataset=WEEK3_Q4_W, uvar=RESP1);
 
+/* The simulation fails after 324 data points */
 
+PROC SGPLOT data=WEEK3_Q4_M aspect=1;
+	title "Original data";
+	scatter x=U_RESP1 y=U_RESP2 / markerattrs=(color='blue' size=6);
+RUN;
 
+PROC SGPLOT data=FrkC aspect=1;
+	title "Frank's Copula";
+	scatter x=X y=Y / markerattrs=(color='blue' size=6);
+RUN;
+
+PROC SGPLOT data=CC aspect=1;
+	title "Clayton's Copula";
+	scatter x=X y=Y / markerattrs=(color='blue' size=6);
+RUN;
+/* We can see it resembles Frank's Copula better, as Clayton's Copula */
+/* has a heavier one sided correlation tail. */
+
+/* Add noise to the discrete variables, to have a better overview */
+DATA WEEK3_Q4_M_h;
+	SET WEEK3_Q4_M;
+	U_RESP1=U_RESP1 + 0.1*(ranuni(1)-0.5); 
+	U_RESP2=U_RESP2 + 0.1*(ranuni(1)-0.5); 
+RUN;
+
+PROC SGPLOT data=WEEK3_Q4_M_h aspect=1;
+	title "Original data";
+	scatter x=U_RESP1 y=U_RESP2 / markerattrs=(color='blue' size=6);
+RUN;
+
+/* Question 3.6 */
+DATA WEEK3_Q6;
+	set SASDATA.RCT;
+	WHERE center = 1;
+RUN;
+
+/* a) */
+PROC TRANSPOSE out=WEEK3_Q6_W(drop = _NAME_ _LABEL_) 
+		data=WEEK3_Q6 prefix=RESP;
+	by ID;
+	id TIME;
+	var RESP; 
+RUN;
+
+/* Remove observations with missing values */
+/* DATA WEEK3_Q6_W; */
+/* 	set WEEK3_Q6_W; */
+/* 	if cmiss(of _all_) then delete;  */
+/* RUN; */
+
+DATA WEEK3_Q6_W;
+	set WEEK3_Q6_W;
+	drop RESP1 RESP2 RESP3 RESP4;
+	Z_DIFF = RESP6 - RESP5;
+	Z_LDIFF = log(RESP6) - log(RESP5);
+	Z_RATIO = RESP6/RESP5;
+RUN;
+
+ods select histogram;
+PROC UNIVARIATE data=WEEK3_Q6_W;
+	histogram Z_DIFF/normal;
+    histogram Z_LDIFF/normal;
+    histogram Z_RATIO/normal;
+RUN;
+
+/* b) */
+/* Testing for H0: μ = 0 vs μ != 0 */
+ods select TestsForLocation;
+PROC UNIVARIATE data=WEEK3_Q6_W normal;
+	var Z_DIFF;
+RUN;
+
+ods select TestsForLocation;
+PROC UNIVARIATE data=WEEK3_Q6_W normal;
+	var Z_LDIFF;
+RUN;
+
+/* Testing for H0: μ = 1 vs μ != 1 */
+ods select TestsForLocation;
+PROC UNIVARIATE data=WEEK3_Q6_W normal MU0=1;
+	var Z_RATIO;
+RUN;
+/* So we can't reject H0 for all 3 */
+
+/* c) */
+/* For the paired t-test, we assume normality.  */
+/* Normality does not seem apparent for the ratio. */
+
+/* For the sign test, no assumptions are made. */
+
+/* For the Wilcoxon signed rank test, we need symmetric  */
+/* distributions. The his- tograms suggest slightly  */
+/* left-skewed distributions, but nothing extreme. */
+
+/* d) */
+/* Based on power, */
+/* t-test, Wilcoxon-signed rank test, Sign test. */
+
+/* e) */
+/* The t-test is not directly appropriate in this case.  */
+/* However, if the sample size is large one could rely on  */
+/* the CLT.  */
+
+/* The assumption of symmetric differences is  */
+/* violated so the Wilcoxon-signed rank test cannot be used  */
+/* to test equality in median of both groups.  */
+
+/* The sign-test does not rely on any distributional  */
+/* assumptions, thus can be used here to test for equality  */
+/* in medians of the groups. */
+
+/* Question 3.7 */
+/* TODO */
+
+/* Question 3.8 */
+DATA COAG; 
+	input Patient C K@@;
+	datalines;
+	1 120 132 8 145 133 15 117 123
+	2 114 116 9 120 123 16 125 108
+	3 129 135 10 129 116 17 136 131 
+	4 128 115 11 126 127 18 151 119
+	5 155 134 12 136 140 19 130 129 
+	6 105 56 13 135 140 20 136 124
+	7 114 114 14 125 114 21 113 112
+	;
+RUN;
+
+/* a) */
+PROC CORR data=COAG plots=scatter(ellipse=none) 
+		spearman pearson kendall;
+	var C K;
+RUN;
+/* Under H0 Rho = 0, */
+/* Pearson's rho = 0.59084 and p-value = 0.0048 */
+/* Spearman's rho = 0.66134 and p-value = 0.0011 */
+/* Kendall's tau = 0.51346 and p-value = 0.0014 */
+/* So we reject the H0 */
+
+/* b) */
+/* Creates uniform marginals, percentiles */
+PROC RANK data=COAG out=COAG_R;
+      var C K;
+      ranks rank_C rank_K;
+RUN;
+
+PROC MEANS data=COAG_R N; 
+	var rank_C rank_K; 
+RUN;
+
+/* Marginals, use these to look at correlation */
+DATA COAG_M;
+	set COAG_R; 
+	U_C=rank_C/21; 
+	U_K=rank_K/21;
+RUN;
+
+/* TODO */
+PROC SGPLOT data=COAG_M aspect=1;
+	title "Actual data";
+	scatter x=U_C y=U_K / markerattrs=(COLOR='blue' size=6);
+RUN;
+
+%SIM_Gum(nsim=21, alpha=1.0353378, seed=6789, dataset=COAG_M, uvar=U_C);
+PROC SGPLOT data=GumC aspect=1;
+	title "Gumbel's Copula";
+	scatter x=X y=Y / markerattrs=(color='blue' size=6);
+RUN;
+%SIM_FGM(nsim=21, alpha=0.15318, seed=6789, dataset=COAG_M, uvar=U_C);
+PROC SGPLOT data=FGMC aspect=1;
+	title "FGM's Copula";
+	scatter x=X y=Y / markerattrs=(color='blue' size=6);
+RUN;
+
+/* c) */
+/* TODO */
+DATA COAG;
+	set COAG;
+	Z_DIFF = C - K;
+	Z_LDIFF = log(C) - log(K);
+	Z_RATIO = C/K;
+RUN;
+
+ods select histogram;
+PROC UNIVARIATE data=COAG;
+	histogram Z_DIFF/normal;
+    histogram Z_LDIFF/normal;
+    histogram Z_RATIO/normal;
+RUN;
+
+/* Testing for H0: μ = 0 vs μ != 0 */
+ods select TestsForLocation;
+PROC UNIVARIATE data=COAG normal;
+	var Z_DIFF;
+RUN;
+
+ods select TestsForLocation;
+PROC UNIVARIATE data=COAG normal;
+	var Z_LDIFF;
+RUN;
+
+/* Testing for H0: μ = 1 vs μ != 1 */
+ods select TestsForLocation;
+PROC UNIVARIATE data=COAG normal MU0=1;
+	var Z_RATIO;
+RUN;
+
+/* d) */
+DATA COAG;
+	set COAG;
+	TT_C = (C<120);
+	TT_K = (K<120);
+RUN;
+
+/* a Pearson correlation coefficient estimated for two  */
+/* binary variables will return the phi coefficient. */
+PROC CORR data=COAG pearson;
+	var TT_C TT_K;
+RUN;
+/* We get Test statistic = 0.41957 and p-value = 0.0583 */
+/* We can't reject H0 */
+
+/* e) */
+/* TODO */
+PROC FREQ data=COAG;
+      tables TT_C*TT_K; 
+      exact mcnem;
+RUN;
+
+/* Question 3.9 */
+DATA WEEK3_Q9;
+	set SASDATA.IVF;
+	IMP = IMP + (ranuni(1)-0.5); 
+RUN;
+
+/* Creates the Wide dataset */
+PROC TRANSPOSE out=WEEK3_Q9_W(drop = _NAME_ _LABEL_) 
+		data=WEEK3_Q9 prefix=IMP;
+	by ID;
+	id PER;
+	var IMP; 
+RUN;
+
+/* Add NP variable and remove empty fields */
+DATA WEEK3_Q9_W;
+	set WEEK3_Q9_W;
+	if cmiss(of _all_) then delete;
+	NP10=(IMP10<85);
+	NP18=(IMP18<85);
+	NP=(IMP18<85|IMP10<85);
+RUN;
+
+/* a) */
+DATA WEEK3_Q9_a;
+	set WEEK3_Q9_W;
+	IMP_DIFF = IMP18 - IMP10;
+	SIGN = (0 > IMP18 - IMP10);
+RUN;
+
+/* TODO: Results in a wrong n and n_0 */
+/* n = 236, n_0 = 117  */
+PROC FREQ data=WEEK3_Q9_a;
+	tables SIGN;
+RUN;
+
+/* Sign Test */
+/* 2 ⋅ min(𝑃(𝑆 ≤ 𝑠),𝑃(𝑆 ≥ 𝑠)), for UPL and LPL */
+PROC IML;
+	LPL = cdf("Binom", 112, 0.5, 217);
+	UPL = 1 - cdf("Binom", 111, 0.5, 217);
+
+	A=LPL||UPL;
+	
+	create SignT from A [colname={'LPL' 'UPL'}]; 
+	append from A;       
+	close SignT;
+QUIT;
+
+PROC FREQ data=WEEK3_Q9_a;
+	tables SIGN/binomial(P=0.5);
+	exact binomial;
+RUN;
+
+/* b) */
+PROC FREQ data=WEEK3_Q9_W;
+      tables NP10*NP18; 
+      exact mcnem;
+RUN;
+
+/* c) */
+DATA WEEK3_Q9_W; 
+	set WEEK3_Q9_W;
+	if cmiss (of IMP10 IMP18 ) then delete;
+RUN;
+
+PROC FREQ data=WEEK3_Q9_W;
+      tables NP10*NP18; 
+      exact mcnem;
+RUN;
+
+/* d) */
+/* - */
+
+/* Question 3.11 */
+/* Drug A = 0, Drug B = 1 */
+DATA WEEK3_Q11;
+	input treatment high count drug;
+	datalines;
+	1 1 12 0
+	0 1 11 0
+	1 0 7 0
+	0 0 70 0
+	1 1 10 1
+	0 1 13 1
+	1 0 4 1
+	0 0 73 1
+	;
+RUN;
+
+/* a) */
+/* 2 sided, 1 sided use tables A*B/AGREE; */
+PROC FREQ data=WEEK3_Q11;
+	where drug = 0;
+	tables high*treatment;
+	weight count;
+	exact mcnem;
+RUN;
+/* Test statistic = 0.8889 and p-value = 0.4807 */
+
+/* b) */
+/* - */
+
+/* c) */
+PROC FREQ data=WEEK3_Q11;
+	where drug = 0;
+	tables high*treatment /chisq;
+	weight count;
+	exact chisq;
+RUN;
+/* The performed Chi-square test would test  */
+/* if the probability to have a high blood  */
+/* pressure after the treatment would be  */
+/* independent of the blood pressure before  */
+/* the treatment. */
