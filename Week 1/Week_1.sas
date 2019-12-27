@@ -363,7 +363,7 @@ RUN;
 
 /* c)  */
 /* Confidence interval median */
-ods select HISTOGRAM;
+ods select histogram;
 PROC UNIVARIATE data=WEEK1;
    histogram GA/normal;
    qqplot    GA/normal;
@@ -471,7 +471,7 @@ RUN;
 /* c) */
 /* We can see a normal distribution for the mean */
 /* and a Chi-Square distribution for the variance */
-ods select HISTOGRAM;
+ods select hisotgram;
 PROC UNIVARIATE data=AVG_FINAL;
    histogram mean/normal;
    histogram variance/normal;

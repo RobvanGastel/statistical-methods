@@ -554,7 +554,6 @@ DATA WEEK2_Q7_a;
 		tables FIS*TRT;
 		exact fisher;
 RUN;
-
 /* Groups | Chi Statistic | P-value | Fisher Stat | P-value */
 /* 0 1	  | 2.8533		  | 0.0912  | 2.8533	  | 0.1202  */
 /* 0 2	  | 4.9708		  | 0.0258  | 4.9708 	  | 0.0347  */
@@ -565,7 +564,6 @@ PROC FREQ data=WEEK2_Q7;
 	tables FIS*TRT /chisq;
 	exact chisq;
 RUN;
-
 /* Test statistic = 5.7210 and p-value = 0.0572 */
 /* We can't reject H0 */
 
