@@ -417,3 +417,92 @@
 		close EstKendall;
 	QUIT;
 %MEND KendallTau;
+
+/* Week 4: ANOVA and randomness */
+
+/* Before a Runs test sort the input */
+PROC SORT data=COAG_Solution;
+	by patient;
+RUN;
+
+/* Runs test conditional and unconditional */
+%MACRO Runs_test(data=,var=,alpha=);
+	PROC IML;
+		use &data;
+		read all var {&var};
+		close &data;
+		
+		X=&var;
+		n=nROW(X);
+		MED=median(X);
+		
+		XC=X;
+		do i=1 to n by 1;
+			if (XC[i] >= MED) then XC[i]=1;
+			else XC[i]=0;
+		end;
+		
+		n1C=sum(XC);
+		n2C=n-n1C;
+		
+		RC=1;
+		do i=2 to n by 1;
+			if(XC[i] ^= XC[i-1]) then RC=RC+1;
+		end;
+		
+		MUC=1+(2*n1C*n2C)/(n1C+n2C);
+		VARC=2*n1C*n2C*(2*n1C*n2C-n1C-n2C)/((n1C+n2C-1)*(n1C+n2C)**2);
+		
+		SC=(RC-MUC)/sqrt(VARC);
+		TC=quantile('NORMAL',&alpha/2);
+		TCU=quantile('NORMAL',1-&alpha/2);
+		PC=(1-cdf('NORMAL',abs(SC)))*2;
+		
+		XUC=repeat(0,n-1,1);
+		TIES=0;
+		do i=1 to (n-1) by 1;
+			if (X[i+1] > X[i]) then XUC[i]=1;
+			if (X[i+1] < X[i]) then XUC[i]=0;
+			if (X[i+1] = X[i]) then XUC[i]=XUC[i-1];
+			if (X[i+1] = X[i]) then TIES=TIES+1;
+		end;
+		
+		RUC=1;
+		do i=2 to (n-1) by 1;
+			if(XUC[i] ^= XUC[i-1]) then RUC=RUC+1;
+		end;
+		
+		MUUC=(2*(n-TIES)-1)/3;
+		VARUC=(16*(n-TIES)-29)/90;
+		
+		SUC=(RUC-MUUC)/sqrt(VARUC);
+		TUC=quantile('NORMAL',&alpha/2);
+		TUCU=quantile('NORMAL',1-&alpha/2);
+		PUC=(1-cdf('NORMAL',abs(SUC)))*2;
+		
+		A = RC||MUC||sqrt(VARC)||PC||SC||TC||TCU||n;
+		create CondRuns from A [colname={'runs','mean runs','std runs','p-value','Normalized statistic','Critical values L','Critical values U','n'}];
+		append from A; 
+		
+		B = RUC||MUUC||sqrt(VARUC)||PUC||SUC||TUC||TUCU||n-TIES;
+		create UncondRuns from B [colname={'runs','mean runs','std runs','p-value','Normalized statistic','Critical values L','Critical values U','n'}]; 
+		append from B;
+		
+		C = ties;
+		create Colties from C [colname={'Ties'}];
+		append from C;
+		close UncondRuns CondRuns Colties;
+				
+		PROC PRINT data=CondRuns noobs;
+			title "Median based (conditional) runs test";
+		RUN;
+		
+		PROC PRINT data=UncondRuns noobs;
+			title "(unconditional) runst test for serial randomness";
+		RUN;
+		
+		PROC PRINT data=Colties noobs;
+			title "Number of ties for both";
+		RUN;
+	QUIT;
+%MEND;
