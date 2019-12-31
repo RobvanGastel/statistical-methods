@@ -52,7 +52,7 @@ RUN;
 
 /* Is AGEM really normal distributed? */
 /* It seems like it is. */
-ods select HISTOGRAM, QQPLOT, PPPLOT;
+ods select histogram, qqplot, pplot;
 PROC UNIVARIATE data=WEEK1;
    var AGEM;
    histogram value/normal;
@@ -76,7 +76,7 @@ RUN;
 /* Question 1.3 */
 /* a) */
 /* What is the interquartile range of the birth weight? */
-ods select QUANTILES;
+ods select quantiles;
 PROC UNIVARIATE data=WEEK1 cipctldf;
   var BW;
 RUN;
@@ -154,7 +154,7 @@ QUIT;
 
 /* e) */
 /* Use MEANS, or show DATA and manually look up */
-PROC MEANS data = WEEK1 max;
+PROC MEANS data=WEEK1 max;
 	var bw;
 RUN;
 
@@ -164,8 +164,8 @@ PROC IML;
 	read all var _NUM_ into X[c=varNames];
 	close WEEK1;
 	 
-	minC = X[><, ];    /* row vector contains min of columns */
-	maxC = X[<>, ];    /* row vector contains max of columns */
+	minC = X[><, ]; /* row vector contains min of columns */
+	maxC = X[<>, ]; /* row vector contains max of columns */
 	print (minC//maxC)[r={"Min" "Max"} c=varNames];
 RUN;
 
@@ -259,7 +259,7 @@ PROC MEANS data=WEEK1_CUSTOM mean var skew kurt;
 RUN;
 
 /* Plots */
-ods select HISTOGRAM;
+ods select histogram;
 PROC UNIVARIATE data=WEEK1_CUSTOM;
    histogram value/normal;
    qqplot    value/normal;
@@ -371,7 +371,7 @@ PROC UNIVARIATE data=WEEK1;
 RUN;
 /* So not normally distributed */
 
-ods select Quantiles;
+ods select quantiles;
 PROC UNIVARIATE data=WEEK1 cipctldf cipctlnormal;
 	var GA;
 RUN;
@@ -419,33 +419,33 @@ RUN;
 /* Its done the same as F but use Clopper-Pearson (exact) */
 
 /* Question 1.7 */
-%macro samples(DATAset=,ns=,n=);
+%macro samples(dataset=,ns=,n=);
 	PROC SURVEYSELECT data=&dataset noprint method=urs n=&n out=FINAL;
-RUN;
-
-DATA FINAL;
-	set FINAL; 
-	sampleno = 1;
-RUN;
-
-%do sn = 2 %to &ns;
-	PROC SURVEYSELECT data=&dataset noprint
-	method=urs n=&n out=SAMPLEI;
-RUN;
-
-DATA SAMPLEI;
-	set SAMPLEI;
-	sampleno = &sn;
-RUN;
-
-DATA FINAL;
-	set Final SAMPLEI;
-RUN;
-%end;
-
-PROC DATASETS library=work noprint;
-	delete SAMPLEI;
-RUN;
+	RUN;
+	
+	DATA FINAL;
+		set FINAL; 
+		sampleno = 1;
+	RUN;
+	
+	%do sn = 2 %to &ns;
+		PROC SURVEYSELECT data=&dataset noprint
+		method=urs n=&n out=SAMPLEI;
+	RUN;
+	
+	DATA SAMPLEI;
+		set SAMPLEI;
+		sampleno = &sn;
+	RUN;
+	
+	DATA FINAL;
+		set Final SAMPLEI;
+	RUN;
+	%end;
+	
+	PROC DATASETS library=work noprint;
+		delete SAMPLEI;
+	RUN;
 %mend;
 
 /* a) */
