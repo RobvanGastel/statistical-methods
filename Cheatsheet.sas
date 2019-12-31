@@ -3,7 +3,7 @@
 /* Week 2: Independent Samples */
 
 /* Mann-Whitney U Test */
-%MACRO mann_whitney_u(dataset, class, var);
+%MACRO Mann_Whitney_U(dataset, class, var);
 	ods select none;
 	PROC NPAR1WAY data=&dataset wilcoxon;
 		var &var;
@@ -73,7 +73,7 @@
 	title;
 %MEND;
 
-%MACRO binary_hypothesis(dataset, var, class); 
+%MACRO Binary_hypothesis(dataset, var, class); 
 	PROC MEANS data=&dataset n sum noprint;
 		var &var;
 		class &class;
@@ -426,7 +426,7 @@ PROC SORT data=COAG_Solution;
 RUN;
 
 /* Runs test conditional and unconditional */
-%MACRO Runs_test(data=,var=,alpha=);
+%MACRO Runs_test(data=, var=, alpha=);
 	PROC IML;
 		use &data;
 		read all var {&var};
@@ -547,57 +547,160 @@ RUN;
 /* For n =< 100 look up the critical value in the table */
 /* After sorting if the first value > approx or absolute */
 /* value, we reject H0 and determine there is a outlier. */
-%MACRO Grubbs_test(ds=, var=);
-	PROC MEANS data=&ds mean std n;
+%MACRO Grubbs_test(dataset, var, id, alpha=0.05);
+    ods select none;
+	PROC MEANS data=&dataset mean var n;
 		var &var;
-		output out=ds_out mean=mean median=median std=std n=n;
+	    output out=out mean=mean var=var n=n; 
 	RUN;
 	
-	DATA &ds;
-		set &ds;
-		if _n_=1 then set ds_out;
-		drop _TYPE_ _FREQ_;
+	DATA outliers;
+		set &dataset(keep=&id &var);
+		if _n_=1 then set out;
+		/* statistic */
+		u = abs((&var - mean) / sqrt(var));
+		/* critical value */
+		t = quantile("t", &alpha / (2*n), n-2);
+		c = (n-1) * sqrt(t**2 / (n * (t**2 + n - 2))); 
+		/* check if this is an outlier */
+		if(u > c) then outlier = "yes"; 
+		else outlier = "no"; /* p-value */
+		u_inv = u*sqrt((n-2)*n) / sqrt(1 - (u**2-(n-2))*n); 
+		p_value = min(2*n*(1-cdf("t", u_inv, n-2)), 1); 
+		keep &id p_value u c outlier;
 	RUN;
 	
-	/* By sorting the value and  */
-	DATA Grubbs;
-		set &ds;
-		U = (&var - mean)/std;
-		Grubbs=abs(U);
-		
-		/* For n =< 100 look up the critical value in */
-		/* the table */
-		/* 	C_onesided_exact= 2.56; */
-		/* 	C_twosided_exact= 2.71;	 */
-		
-		t = quantile("t", 0.05 / (2*N), N-2);
-		u_inv = u*sqrt((n-2)) / sqrt(n-1-u**2);
-		
-		C_twosided_approx = (n-1) * sqrt(t**2 / (n * (t**2 + n - 2)));
-		p_twosided_approx = min(2*n*min(1-cdf("t", u_inv, n-2),cdf("t", u_inv, n-2)), 1);
+	PROC SORT data=outliers; 
+		by descending u;
+	RUN;
+	ods select all;
+	              
+	title1 "Grubbs test";
+	title2 "Variable: &var";
+	PROC PRINT data=outliers(obs=1) label noobs;
+		var &id p_value u c outlier; 
+		label &id="id" p_value="p-value"
+		u="statistic (|u|)" c="critical value" 
+		outlier="is outlier?";
+    RUN;
+    title;
+%MEND;
+
+/* Tukey's method */
+%MACRO Tukey_method(dataset, var, id);
+	ods select none;
+	PROC MEANS data=&dataset median p25 p75;
+		var &var;
+		output out=quartiles p25=p25 p75=p75;
 	RUN;
 	
-	PROC SORT data=Grubbs;
-		by descending Grubbs;
+	DATA tukey;
+		set &dataset(keep=&id &var);
+		if _n_=1 then set quartiles;
+		iqr = p75-p25;
+		lower = p25 - 1.5*IQR;
+		upper = p75 + 1.5*IQR;
+		if &var >= lower and &var <= upper then delete;
+	RUN;
+	ods select all;
+	
+	title1 "Outliers found using tukey’s method."; 
+	title2 "Variable: &var";
+	PROC PRINT data=tukey noobs label;
+		var &id &var lower upper iqr; 
+		label lower="Lower limit" upper="Upper limit"
+		iqr="Interquartile range (IQR)";
+	RUN; 
+	title;
+%MEND;
+
+/* Doornbos test */
+%MACRO Doornbos_test(dataset, var, id, alpha=0.05);
+	ods select none;
+	PROC MEANS data=&dataset mean var n;
+		var &var;
+		output out=out mean=mean var=var n=n; 
 	RUN;
 	
-	PROC PRINT data=Grubbs;
+	DATA outliers;
+		set &dataset(keep=&id &var);
+		if _n_=1 then set out;
+		/* leave-one-out variance */ 
+		var_loo = ((n - 1) / (n - 2)) * var - (n / ((n - 1)*(n - 2)))*(&var - mean)**2;
+		/* statistics */
+		w = abs((&var - mean) / sqrt(var_loo * (n - 1) / n)); 
+		/* critical value */
+		c = quantile("t", 1 - &alpha / (2*n), n-2);
+		/* check if this is an outlier */
+		if(w > c) then outlier = "yes"; 
+		else outlier = "no"; /* p-value */
+		p_value = min(2*n*(1-cdf("t", w, n-2)), 1);
+		keep &id p_value w c outlier; 
 	RUN;
-%MEND Grubbs_test; 
+	
+	PROC SORT data=outliers; 
+		by descending w;
+	RUN;
+	ods select all;
+	
+	title1 "Doornbos test";
+	title2 "Variable: &var";
+	PROC PRINT data=outliers(obs=1) label noobs;
+		var &id p_value w c outlier;
+		label &id="id" p_value="p-value" 
+		w="statistic (|W|)" c="critical value" 
+		outlier="is outlier?";
+	RUN;
+	title; 
+%MEND;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* Hampel's Rule */
+%MACRO Hampel(dataset, var, id);
+	ods select none;
+	PROC MEANS data=&dataset median;
+		var &var;
+     	output out=median median=median; 
+    RUN;
+    
+    DATA hampel;
+    	set &dataset(keep=&id &var); 
+    	if _n_=1 then set median; 
+    	abs_dev = abs(&var - median);
+    RUN;
+    
+    PROC MEANS data=hampel median;
+		var abs_dev;
+		output out=abs_dev_median median=abs_dev_median;
+	RUN;
+	
+	DATA hampel;
+		set hampel;
+		if _n_=1 then set abs_dev_median;
+		abs_norm_val = abs_dev / abs_dev_median;
+		if abs_norm_val <= 3.5 then delete;
+	RUN;
+	
+	PROC SORT data=hampel;
+		by descending abs_norm_val;
+	RUN;
+	ods select all;
+    
+    title1 "Outliers found using hampel’s rule.";
+    title2 "Variable: &var";
+	PROC PRINT data=hampel noobs label;
+		var &id &var abs_norm_val;
+      	label abs_norm_val="absolute normalized value (z_k)";
+	RUN;
+	title; 
+%MEND;
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
