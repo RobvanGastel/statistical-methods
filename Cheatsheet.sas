@@ -506,3 +506,98 @@ RUN;
 		RUN;
 	QUIT;
 %MEND;
+
+/* Week 5: Normality and Outliers */
+
+/* Skewness and Kurtosis tests for normality */
+%MACRO Skewness_Kurtosis_test(skewness=, kurtosis=, n=);
+	DATA approx;
+		N=&n;
+		G1=&skewness;
+		G2=&kurtosis;
+		b1=(N-2)*G1/(sqrt(N*(N-1)));
+		b2=G2*((N-2)*(N-3))/((N+1)*(N-1))+3*(N-1)/(N+1);
+
+		Cn=(3*(N**2+27*N-70)*(N+1)*(N+3))/((N-2)*(N+5)*(N+7)*(N+9));
+		Wn2=-1+SQRT(2*(Cn-1));
+		
+		Alphan=SQRT(2/(Wn2-1));
+		Dn=1/sqrt(log(sqrt(Wn2)));
+		Bn=sqrt((N+1)*(N+3)/(6*(N-2)))*b1;
+		Ts=Dn*log(Bn/Alphan+sqrt(1+(Bn/Alphan)**2));
+		
+		Mun=3*(N-1)/(N+1);
+		Sigman=sqrt((24*N*(N-2)*(N-3))/((N+3)*(N+5)*(N+1)**2));
+		Gamma1n=((6*(N**2-5*N+2))/((N+7)*(N+9)))*sqrt(6*(N+3)*(N+5)/(N*(N-2)*(N-3)));
+		An=6+(8/(Gamma1n))*(2/Gamma1n+sqrt(1+4/(Gamma1n**2)));
+		Un=(b2-Mun)/Sigman;
+		Tk=sqrt(9*An/2)*((9*An-2)/(9*An)-((1-2/An)/(1+Un*sqrt(2/(An-4))))**(1/3));
+		K2=Tk**2+Ts**2;
+		
+		Ps=2*min(cdf('Normal',Ts,0,1),1-cdf('Normal',Ts,0,1));
+		Pk=2*min(cdf('Normal',Tk,0,1),1-cdf('Normal',Tk,0,1));
+		PK2=1-cdf('chisq',K2,2);
+	RUN;
+	
+	PROC PRINT approx noobs;
+	RUN;
+%MEND;
+
+/* Grubbs test for outliers */
+/* For n =< 100 look up the critical value in the table */
+/* After sorting if the first value > approx or absolute */
+/* value, we reject H0 and determine there is a outlier. */
+%MACRO Grubbs_test(ds=, var=);
+	PROC MEANS data=&ds mean std n;
+		var &var;
+		output out=ds_out mean=mean median=median std=std n=n;
+	RUN;
+	
+	DATA &ds;
+		set &ds;
+		if _n_=1 then set ds_out;
+		drop _TYPE_ _FREQ_;
+	RUN;
+	
+	/* By sorting the value and  */
+	DATA Grubbs;
+		set &ds;
+		U = (&var - mean)/std;
+		Grubbs=abs(U);
+		
+		/* For n =< 100 look up the critical value in */
+		/* the table */
+		/* 	C_onesided_exact= 2.56; */
+		/* 	C_twosided_exact= 2.71;	 */
+		
+		t = quantile("t", 0.05 / (2*N), N-2);
+		u_inv = u*sqrt((n-2)) / sqrt(n-1-u**2);
+		
+		C_twosided_approx = (n-1) * sqrt(t**2 / (n * (t**2 + n - 2)));
+		p_twosided_approx = min(2*n*min(1-cdf("t", u_inv, n-2),cdf("t", u_inv, n-2)), 1);
+	RUN;
+	
+	PROC SORT data=Grubbs;
+		by descending Grubbs;
+	RUN;
+	
+	PROC PRINT data=Grubbs;
+	RUN;
+%MEND Grubbs_test; 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
