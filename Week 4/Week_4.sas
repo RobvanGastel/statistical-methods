@@ -415,7 +415,7 @@ RUN;
 ods output SolutionR = RCT_R;
 PROC MIXED data=RCT method=TYPE3 cl;
 	class ID;
-	model RESP = /solution cl outp=pred outpm=RM outp=RC;
+	model RESP = /solution cl outpm=RM outp=RC;
 	random ID /solution;
 RUN;
 /* EBLUPS Patient 1 = -0.01764 and Patient 2 = -0.5176 */

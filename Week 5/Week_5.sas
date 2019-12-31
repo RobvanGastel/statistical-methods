@@ -14,7 +14,7 @@ RUN;
 PROC UNIVARIATE data=WEEK5_Q1 normaltest;
 	var AGEM;
 	histogram AGEM/normal;
-	probplot AGEM/normal;
+	probplot AGEM/normal(mu=est sigma=est);
 RUN;
 
 /* Shapiro-Wilk */
@@ -97,7 +97,6 @@ RUN;
 /* BW is approximately normal at lambda = 2 */
 DATA WEEK5_Q2;
 	set SASDATA.IVF;
-	BWPLUS2 = (0.5)*(BW**(2) - 1);
 RUN;
 
 /* a) */
@@ -107,52 +106,56 @@ RUN;
 /* For n =< 100 look up the critical value in the table */
 /* After sorting if the first value > approx or absolute */
 /* value, we reject H0 and determine there is a outlier. */
-%MACRO Grubbs_test(ds=, var=);
-	PROC MEANS data=&ds mean std n;
+%MACRO Grubbs_test(dataset, var, id, alpha=0.05);
+    ods select none;
+	PROC MEANS data=&dataset mean var n;
 		var &var;
-		output out=ds_out mean=mean median=median std=std n=n;
+	    output out=out mean=mean var=var n=n; 
 	RUN;
 	
-	DATA &ds;
-		set &ds;
-		if _n_=1 then set ds_out;
-		drop _TYPE_ _FREQ_;
+	DATA outliers;
+		set &dataset(keep=&id &var);
+		if _n_=1 then set out;
+		/* statistic */
+		u = abs((&var - mean) / sqrt(var));
+		/* critical value */
+		t = quantile("t", &alpha / (2*n), n-2);
+		c = (n-1) * sqrt(t**2 / (n * (t**2 + n - 2))); 
+		/* check if this is an outlier */
+		if(u > c) then outlier = "yes"; 
+		else outlier = "no"; /* p-value */
+		u_inv = u*sqrt((n-2)*n) / sqrt(1 - (u**2-(n-2))*n); 
+		p_value = min(2*n*(1-cdf("t", u_inv, n-2)), 1); 
+		keep &id p_value u c outlier;
 	RUN;
 	
-	/* By sorting the value and  */
-	DATA Grubbs;
-		set &ds;
-		U = (&var - mean)/std;
-		Grubbs=abs(U);
-		
-		/* For n =< 100 look up the critical value in */
-		/* the table */
-		/* 	C_onesided_exact= 2.56; */
-		/* 	C_twosided_exact= 2.71;	 */
-		
-		t = quantile("t", 0.05 / (2*N), N-2);
-		u_inv = u*sqrt((n-2)) / sqrt(n-1-u**2);
-		
-		C_twosided_approx = (n-1) * sqrt(t**2 / (n * (t**2 + n - 2)));
-		p_twosided_approx = min(2*n*min(1-cdf("t", u_inv, n-2),cdf("t", u_inv, n-2)), 1);
+	PROC SORT data=outliers; 
+		by descending u;
 	RUN;
-	
-	PROC SORT data=Grubbs;
-		by descending Grubbs;
-	RUN;
-	
-	PROC PRINT data=Grubbs;
-	RUN;
-%MEND Grubbs_test; 
+	ods select all;
+	              
+	title1 "Grubbs test";
+	title2 "Variable: &var";
+	PROC PRINT data=outliers(obs=1) label noobs;
+		var &id p_value u c outlier; 
+		label &id="id" p_value="p-value"
+		u="statistic (|u|)" c="critical value" 
+		outlier="is outlier?";
+    RUN;
+    title;
+%MEND; 
 
-%Grubbs_test(ds=WEEK5_Q2, var=BWPLUS2);
-
-%Grubbs_test(ds=WEEK5_Q2, var=BW);
+%Grubbs_test(dataset=WEEK5_Q2, var=BW, id=ID);
 
 PROC UNIVARIATE data=WEEK5_Q2 normaltest;
-	var BWPLUS2;
-	histogram BWPLUS2/normal;
-	probplot BWPLUS2/normal;
+	var BW;
+	histogram BW/normal;
+	probplot BW/normal(mu=est sigma=est);
+RUN;
+
+/* Shows alot of ties (freq > 1) */
+PROC FREQ data=WEEK5_Q2;
+	tables BW;
 RUN;
 
 /* Anderson-Darling */
@@ -161,52 +164,371 @@ RUN;
 /* b) */
 PROC MEANS data=WEEK5_Q2 mean std n;
 	var BW;
-	output out=ds_out mean=mean_bw median=median_bw std=std_bw n=n;
+	output out=ds_out mean=mean median=median std=std n=n;
 RUN;
 	
 DATA WEEK5_Q2;
 	set WEEK5_Q2;
-	if _n_=1 then set ds_out;
+	if _n_= 1 then set ds_out;
 	drop _TYPE_ _FREQ_;
 RUN;
 	
 /* Box plots */
 PROC BOXPLOT data=WEEK5_Q2;
-	plot BW*MEAN_BW/boxstyle=schematic;
-RUN;
-
-PROC BOXPLOT data=WEEK5_Q2;
-	plot BWPLUS2*MEAN/boxstyle=schematic;
+	plot BW*MEAN/boxstyle=schematic;
 RUN;
 
 /* Tukey's method */
+%MACRO Tukey_method(dataset, var, id);
+	ods select none;
+	PROC MEANS data=&dataset median p25 p75;
+		var &var;
+		output out=quartiles p25=p25 p75=p75;
+	RUN;
+	
+	DATA tukey;
+		set &dataset(keep=&id &var);
+		if _n_=1 then set quartiles;
+		iqr = p75-p25;
+		lower = p25 - 1.5*IQR;
+		upper = p75 + 1.5*IQR;
+		if &var >= lower and &var <= upper then delete;
+	RUN;
+	ods select all;
+	
+	title1 "Outliers found using tukey’s method."; 
+	title2 "Variable: &var";
+	PROC PRINT data=tukey noobs label;
+		var &id &var lower upper iqr;
+		label lower="Lower limit" upper="Upper limit" iqr="Interquartile range (IQR)";
+	RUN; 
+	title;
+%MEND;
 
-/* (Reset Dataset) */
+/* ID = 98 and ID = 294 are outliers by the Tukey's method */
+%Tukey_method(dataset=WEEK5_Q2, var=BW, id=ID);
+
+/* Dataset without outliers */
+DATA WEEK5_Q2_b;
+	set SASDATA.IVF;
+	if ID = 98 then delete;
+	if ID = 294 then delete;
+RUN;
+	
+PROC UNIVARIATE data=WEEK5_Q2_b normaltest;
+	var BW;
+	histogram BW/normal;
+	probplot BW/normal(mu=est sigma=est);
+RUN;
+/* The Test statistics and p-values remain mostly the same */
+
+/* c) */
+/* Box-Cox transform with lambda = 2. */
 DATA WEEK5_Q2;
 	set SASDATA.IVF;
 	BWPLUS2 = (0.5)*(BW**(2) - 1);
 RUN;
 
-PROC MEANS data=WEEK5_Q2 mean std n;
-	var BW;
-	output out=ds_out mean=mean median=median std=std n=n p25=p25 p75=p75;
+/* H0 couldn't be rejected, no outliers */
+%Grubbs_test(dataset=WEEK5_Q2, var=BWPLUS2, id=ID);
+
+/* H0 couldn't be rejected, no outliers */
+%Tukey_method(dataset=WEEK5_Q2, var=BWPLUS2, id=ID);
+
+PROC UNIVARIATE data=WEEK5_Q2 normaltest;
+	var BWPLUS2;
+	histogram BWPLUS2/normal;
+	probplot BWPLUS2/normal(mu=est sigma=est);
+RUN;
+/* Because there are some outliers we use Anderson-Darling test */
+
+/* Question 5.3 */
+DATA WEEK5_Q3;
+	set SASDATA.IVF;
+	where PER = 4;
+	GAL = log(44 - GA);
 RUN;
 
-DATA TUKEY;
-	set WEEK5_Q2;
-	IQR=p75-p25;
-	LOWERT = p25 - 1.5*IQR;
-	UPPERT = p75 + 1.5*IQR;
+/* a) */
+%MACRO Doornbos_test(dataset, var, id, alpha=0.05);
+	ods select none;
+	PROC MEANS data=&dataset mean var n;
+		var &var;
+		output out=out mean=mean var=var n=n; 
+	RUN;
+	
+	DATA outliers;
+		set &dataset(keep=&id &var);
+		if _n_=1 then set out;
+		/* leave-one-out variance */ 
+		var_loo = ((n - 1) / (n - 2)) * var - (n / ((n - 1)*(n - 2)))*(&var - mean)**2;
+		/* statistics */
+		w = abs((&var - mean) / sqrt(var_loo * (n - 1) / n)); 
+		/* critical value */
+		c = quantile("t", 1 - &alpha / (2*n), n-2);
+		/* check if this is an outlier */
+		if(w > c) then outlier = "yes"; 
+		else outlier = "no"; /* p-value */
+		p_value = min(2*n*(1-cdf("t", w, n-2)), 1);
+		keep &id p_value w c outlier; 
+	RUN;
+	
+	PROC SORT data=outliers; 
+		by descending w;
+	RUN;
+	ods select all;
+	
+	title1 "Doornbos test";
+	title2 "Variable: &var";
+	PROC PRINT data=outliers(obs=1) label noobs;
+		var &id p_value w c outlier;
+		label &id="id" p_value="p-value" 
+		w="statistic (|W|)" c="critical value" 
+		outlier="is outlier?";
+	RUN;
+	title; 
+%MEND;
+
+/* Perform outlier test before transform */
+%Doornbos_test(dataset=WEEK5_Q3, var=GA, id=ID);
+
+/* Outliers: id = 174 */
+DATA WEEK5_Q3;
+	set WEEK5_Q3;
+	if ID = 174 then delete;
 RUN;
 
+PROC UNIVARIATE data=WEEK5_Q3 normaltest;
+	var GA;
+	histogram GA/normal;
+	probplot GA/normal(mu=est sigma=est);
+RUN;
+/* SHOULD'VE BEEN ANDERSON-DARLING */
+/* As we have a slight right skew we use the shapiro-Wilk */
+/* test, with T statistic = 0.9912354 and p-value = 0.1378 */
+/* ALSO DO TEST FOR TIES */
+
+/* b) */
+DATA WEEK5_Q3;
+	set SASDATA.IVF;
+	where PER = 4;
+	GAL = log(44 - GA);
+RUN;
+
+%MACRO Hampel(dataset, var, id);
+	ods select none;
+	PROC MEANS data=&dataset median;
+		var &var;
+     	output out=median median=median; 
+    RUN;
+    
+    DATA hampel;
+    	set &dataset(keep=&id &var); 
+    	if _n_=1 then set median; 
+    	abs_dev = abs(&var - median);
+    RUN;
+    
+    PROC MEANS data=hampel median;
+		var abs_dev;
+		output out=abs_dev_median median=abs_dev_median;
+	RUN;
+	
+	DATA hampel;
+		set hampel;
+		if _n_=1 then set abs_dev_median;
+		abs_norm_val = abs_dev / abs_dev_median;
+		if abs_norm_val <= 3.5 then delete;
+	RUN;
+	
+	PROC SORT data=hampel;
+		by descending abs_norm_val;
+	RUN;
+	ods select all;
+    
+    title1 "Outliers found using hampel’s rule.";
+    title2 "Variable: &var";
+	PROC PRINT data=hampel noobs label;
+		var &id &var abs_norm_val;
+      	label abs_norm_val="absolute normalized value (z_k)";
+	RUN;
+	title; 
+%MEND;
+
+/* Outliers found */
+%Hampel(dataset=WEEK5_Q3, var=GA, id=ID);
+
+/* Remove the outliers from the dataset */
+PROC SQL;
+	CREATE TABLE WEEK5_Q3_b AS
+		SELECT * FROM WEEK5_Q3
+		WHERE ID NOT IN (SELECT ID FROM hampel);
+RUN;
+
+PROC UNIVARIATE data=WEEK5_Q3 normaltest;
+	var GA;
+	histogram GA/normal;
+	probplot GA/normal(mu=est sigma=est);
+RUN;
+/* Anderson-Darling test */
+/* T statistic = 0.519412 and p-value = 0.1940 */
+
+/* c) */
+DATA WEEK5_Q3;
+	set SASDATA.IVF;
+	where PER = 4;
+	GAL = log(44 - GA);
+RUN;
+
+%Doornbos_test(dataset=WEEK5_Q3, var=GAL, id=ID);
+%Hampel(dataset=WEEK5_Q3, var=GAL, id=ID);
+/* Hampel tests finds some outliers */
+
+PROC UNIVARIATE data=WEEK5_Q3 normaltest;
+	var GA;
+	histogram GA/normal;
+	probplot GA/normal(mu=est sigma=est);
+RUN;
+
+/* Question 5.4 */
+DATA COAG; 
+	input Patient C K@@;
+	datalines;
+	1 120 132 8 145 133 15 117 123
+	2 114 116 9 120 123 16 125 108
+	3 129 135 10 129 116 17 136 131 
+	4 128 115 11 126 127 18 151 119
+	5 155 134 12 136 140 19 130 129 
+	6 105 56 13 135 140 20 136 124
+	7 114 114 14 125 114 21 113 112
+	;
+RUN;
+
+/* K numeric value 1, C is numeric value 2 */
+PROC SQL;
+	CREATE TABLE COAG_T AS
+		SELECT c.Patient, c.K as Value, 1 as Type,
+		(g.K + g.C)/2 as mean
+		FROM COAG c, COAG g
+		WHERE c.Patient = g.Patient
+		UNION
+		SELECT c.Patient, c.C, 2,
+		(g.K + g.C)/2 as mean
+		FROM COAG c, COAG g
+		WHERE c.Patient = g.Patient;
+RUN;
+
+/* a) */
+PROC MIXED data=COAG_T method=TYPE3 cl;
+	class patient type;
+	model value = /solution cl outpm=RM outp=RC;
+	random patient;
+RUN;
+
+/* Shows alot of ties (freq > 1) */
+PROC FREQ data=RC;
+	tables Resid;
+RUN;
+
+PROC UNIVARIATE data=RC normaltest;
+	var Resid;
+	histogram Resid/normal;
+	probplot Resid/normal(mu=est sigma=est);
+RUN;
+
+/* Anderson-Darling */
+/* Test Statistic = 1.158151 and p-value <0.0050 */
+
+/* b) */
+/* TODO */
+
+/* c) */
+/* TODO */
+
+/* Question 5.5 */
+
+/* a) */
+/* TODO */
+/* b) */
+/* TODO */
+
+/* Question 5.6 */
+DATA WEEK5_Q6; 
+   input value; 
+   datalines; 
+	25.0 
+	27.4 
+	17.1 
+	22.1 
+	20.8 
+	21.3 
+	22.5 
+	29.2 
+	27.9 
+	25.7 
+	24.7 
+	18.8
+ ;
+RUN;
+
+/* a) */
+PROC UNIVARIATE data=WEEK5_Q6 normaltest;
+	histogram value/normal;
+	probplot value/normal(mu=est sigma=est);
+RUN;
+
+/* b) */
+/* Add ID */
+DATA WEEK5_Q6;
+	set WEEK5_Q6;
+	ID = _n_;
+RUN;
+
+%Doornbos_test(dataset=WEEK5_Q6, var=value, id=ID);
+%Grubbs_test(dataset=WEEK5_Q6, var=value, id=ID);
+%Hampel(dataset=WEEK5_Q6, var=value, id=ID);
+%Tukey_method(dataset=WEEK5_Q6, var=value, id=ID);
+
+/* Question 5.8 */
+/* a)-d) */
+/* Are all implemented */
 
 
+/* Question 5.9 */
+DATA WEEK5_Q9;
+	do i = 1 to 100000;
+	  X = rand('normal', 0, 1);
+	  output;
+	end;
+RUN;
 
+/* a) */
 
+/* We can see its approximately standard normally */
+/* distributed. */
+PROC MEANS data=WEEK5_Q9;
+RUN;
 
+%Tukey_method(dataset=WEEK5_Q9, var=X, id=i);
 
+PROC MEANS data=Tukey n;
+RUN;
+/* For n = 1.000.000 we observed 711 outliers */
+/* which is 0,711% of the data was classifed as */
+/* outliers. */
+/* Which is close to the number we expected which is */
+/* 4,30%. */
 
+/* b) */
+DATA WEEK5_Q9;
+	do i = 1 to 100000;
+	  X = rand('exponential', 1);
+	  output;
+	end;
+RUN;
 
+%Tukey_method(dataset=WEEK5_Q9, var=X, id=i);
 
-
-
+PROC MEANS data=Tukey n;
+RUN;
+/* 4.909% of the data is classified as outlier and the */
+/* actual value we expected is 6,61%. */
