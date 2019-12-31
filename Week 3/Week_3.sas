@@ -683,7 +683,7 @@ RUN;
 /* h) */
 /* Taking the averages for Clayton's alpha = 1.10784575 */
 /* and frank's alpha = 3.5580449 */
-%SIM_Clay(nsim=700, alpha=1.1221218, seed=6789, dataset=WEEK3_Q4_W, uvar=RESP1);
+%SIM_Clay(nsim=700, alpha=1.10784575, seed=6789, dataset=WEEK3_Q4_W, uvar=RESP1);
 %SIM_Frk(nsim=700, alpha=3.5580449, seed=6789, dataset=WEEK3_Q4_W, uvar=RESP1);
 
 /* The simulation fails after 324 data points */
