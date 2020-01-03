@@ -61,7 +61,6 @@ RUN;
 /* Compare treatment (TRT) on birth weight (BW) */
 /* H0: m_1 = m_2 vs H1: m_1 != m_2 */
 /* 1 := (TRT = 1) etc. */
-
 PROC SORT data=WEEK2_Q2; 
 	by TRT;
 	PROC MEANS mean median std n skewness kurtosis; 
@@ -69,40 +68,34 @@ PROC SORT data=WEEK2_Q2;
 		by TRT; 
 RUN;
 
-DATA WEEK2_Q2_a;
-	set WEEK2_Q2; 
-	if TRT < 2;
-	ods output WilcoxonScores=WRS_01 (keep= Class N SumOfScores);
-	PROC NPAR1WAY wilcoxon; 
-		class TRT;
-		var BW;
+ods output WilcoxonScores=WRS_01 (keep= Class N SumOfScores);
+PROC NPAR1WAY data=WEEK2_Q2 wilcoxon Correct=NO;
+	where TRT < 2;
+	class TRT;
+	var BW;
 	title 'TRT=0 vs TRT=1'; 
 RUN;
 
-DATA WEEK2_Q2_a; 
-	set WEEK2_Q2; 
-	if TRT > 0;
-	ods output WilcoxonScores=WRS_12 (keep= Class N SumOfScores);
-	PROC NPAR1WAY wilcoxon; 
-		class TRT;
-		var BW;
+ods output WilcoxonScores=WRS_12 (keep= Class N SumOfScores);
+PROC NPAR1WAY data=WEEK2_Q2 wilcoxon Correct=NO; 
+	where TRT > 0;
+	class TRT;
+	var BW;
 	title 'TRT=0 vs TRT=2'; 
 RUN;
 
-DATA WEEK2_Q2_a; 
-	set WEEK2_Q2; 
-	if TRT NE 1; /* NE is the same as != */
-	ods output WilcoxonScores=WRS_02 (keep= Class N SumOfScores);
-	PROC NPAR1WAY wilcoxon; 
-		class TRT;
-		var BW;
-		exact wilcoxon/mc;
+ /* NE is the same as != */
+ods output WilcoxonScores=WRS_02 (keep= Class N SumOfScores);
+PROC NPAR1WAY wilcoxon data=WEEK2_Q2 Correct=NO; 
+	where TRT NE 1;
+	class TRT;
+	var BW;
 	title 'TRT=1 vs TRT=2'; 
 RUN;
 
 /* Table: */
 /* TRT a vs b | Statistic (S) | P-value */
-/* 01 			256				0.1868  */
+/* 01 			256				0.1829  */
 /* 02 			519.5			0.0164  */
 /* 12 			261.5			0.4891  */
 
