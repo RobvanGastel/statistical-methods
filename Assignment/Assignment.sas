@@ -13,21 +13,17 @@ RUN;
 
 DATA BCHCT;
 	set BCHC;
+	ID = _n_; 
 	if Race_Ethnicity = "White" then RE = 0;
 	if Race_Ethnicity = "Black" then RE = 1;
 	if Race_Ethnicity = "Asian/PI" then RE = 2;
 	if Race_Ethnicity = "Hispanic" then RE = 3;
 RUN;
 
-
-PROC SQL;
-	SELECT count(*) FROM BCHCT
-	WHERE mortality is null;
-RUN;
-/* Amount of empty mortality rows is 16 */
-
 /* Distributions of mortality per Ethnicity group */
-/* TODO: Could extend with Skewness and Kurtosis test */
+/* TODO: Justify choise of test */
+
+/* Per Group */
 PROC UNIVARIATE data=BCHCT normal;
 	where RE = 0;
 	var mortality;
@@ -52,10 +48,140 @@ PROC UNIVARIATE data=BCHCT normal;
 	histogram mortality/normal;
 RUN;
 
+/* Total sample */
 PROC UNIVARIATE data=BCHCT normal;
 	histogram mortality/normal;
 RUN;
 
+PROC MEANS data=BCHCT skewness kurtosis n;
+	var mortality;
+RUN;
+
+%Skewness_Kurtosis_test(skewness=1.1839264, kurtosis=19256820, n=148);
+/* Not significant */
+
+
+/* Dealing with NaN values */
+PROC SQL;
+	SELECT count(*) FROM BCHCT
+	WHERE mortality is null;
+RUN;
+/* Amount of empty mortality rows is 16 */
+
+/* In fact, simulation studies suggest that mean imputation */
+/* is possibly the worst missing data handling method  */
+/* available. Consequently, in no situation is mean  */
+/* imputation defensible, and you should absolutely avoid  */
+/* this approach. (Enders, C. K. (2010). Applied missing  */
+/* data analysis. New York: Guilford.) */
+
+/* TODO: Took MCAR approach and justify it */
+
+/* Multiple Imputation approach */
+/* Overview before filling in missing values */
+PROC MEANS DATA=BCHCT mean var std median min max;
+	class Race_Ethnicity;
+RUN;
+
+/* TODO: Maybe do this by group with where */
+/* MCAR */
+PROC SORT data=BCHCT;
+	by Race_Ethnicity;
+RUN;
+
+/* We have 16 empty fields */
+PROC MI data=BCHCT nimpute=5 out=BCHCT_MI seed=42 minimum=0;
+	by Race_Ethnicity;
+	var mortality year;
+RUN;
+/* Use as many variables for var as possible accoridng */
+/* to the paper */
+/* https://support.sas.com/rnd/app/stat/papers/multipleimputation.pdf */
+/* Page 7 */
+
+PROC PRINT data=BCHCT_MI;
+RUN;
+
+/* Overview after filling in missing values for mortality */
+/* Increased the mean for asain/PI by +11, for hispanic by +3 */
+PROC MEANS DATA=BCHCT_MI mean var std median min max;
+	class Race_Ethnicity;
+RUN;
+
+/* Replace dataset */
+DATA BCHCT;
+	set BCHCT_MI;
+RUN;
+
+/* Removing outliers */
+/* TODO: Justify choice of test for outliers */
+
+/* From lecture: */
+/* Perform your analyses also on the complete data  */
+/* and report on the influence of excluding observations. */
+/* • Sensitivity analysis. */
+/* Discuss extreme observations with the data collector  */
+/* when possible. */
+
+
+PROC MEANS data=BCHCT;
+RUN;
+
+DATA BCHCT_mean;
+	set BCHCT;
+	mean = 163.9783784;
+RUN;
+
+
+/* All tests asumme normality which is why we need */
+/* BoxCox transform for lambda = 0, total set is normal */
+/* Both test for only 1 outliers and Grubbs is used */
+/* More in practice. */
+%Grubbs_test(dataset=BCHCT, var=mortality, id=ID);
+
+%Doornbos_test(dataset=BCHCT, var=mortality, id=ID);
+
+%Tukey_method(dataset=BCHCT, var=mortality, id=ID);
+
+/* For Tukey method */
+PROC BOXPLOT data=BCHCT_mean;
+	plot Mortality*mean/boxstyle=schematic;
+RUN;
+
+%Hampel(dataset=BCHCT, var=mortality, id=ID);
+
+/* Some of the outliers */
+PROC SQL;
+	SELECT * FROM BCHCT_n
+	WHERE ID IN (138, 139, 140, 142, 143, 144, 34);
+RUN;
+/* Tukey and Hampel give the same outliers except for 34 */
+/* 34 is an extreme value of Detriot. */
+/* The other values \approx 138-144 \139 are all from */
+/* San Antonio which indicate these are not outliers */
+
+/* (BOX COX TRANSFORM BELOW SHOULD RUN FIRST) */
+/* As we can transform data for our outlier test and know */
+/* The mortality is normal after transform lambda = 0 */
+/* We apply the hampel's rule as this one doesn't give us */
+/* The place san antonio with the extreme values */
+
+%Hampel(dataset=BCHC_BC, var=MT0, id=ID);
+PROC SQL;
+	SELECT * FROM BCHCT_n
+	WHERE ID IN (83, 163);
+RUN;
+/* TODO: If we exclude these values we need a good */
+/* justification and sensitivity analysis. */
+
+/* Only finds NaN values */
+%Tukey_method(dataset=BCHC_BC, var=MT0, id=ID);
+
+/* Can't find outliers */
+%Grubbs_test(dataset=BCHC_BC, var=MT0, id=ID);
+%Doornbos_test(dataset=BCHC_BC, var=MT0, id=ID);
+
+/* Transforming the data for normality */
 /* Box Cox transform */
 /* λ ∈ {−2,−1/2,0,1/2,2} */
 DATA BCHC_BC; 
@@ -133,7 +259,6 @@ RUN;
 /* MTMINUS12 looks OK */
 
 
-
 /* Multiple groups (ANOVA) on not transformed data */
 PROC MIXED data=BCHCT method=TYPE3 cl;
 	class RE;
@@ -141,7 +266,7 @@ PROC MIXED data=BCHCT method=TYPE3 cl;
 	random RE /solution;
 RUN;
 
-/* ANOVA on transformed data */
+/* ANOVA on transformed data MINUS12 */
 PROC MIXED data=BCHC_BC method=TYPE3 cl;
 	class RE;
 	model MTMINUS12 = /solution cl outpm=RM outp=RC;
@@ -149,6 +274,12 @@ PROC MIXED data=BCHC_BC method=TYPE3 cl;
 RUN;
 
 /* TODO: Two-Way ANOVA  */
+PROC MIXED data=BCHCT method=TYPE3 cl;
+	class RE;
+	model Mortality = /solution cl DDFM=SAT outpm=RM outp=RC;
+	random RE /solution;
+	LSMEANS RE /CL;
+RUN;
 
 
 /* CHECK ANOVA ASSUMPTIONS: */
@@ -157,18 +288,6 @@ RUN;
 /* • Normality of the random effects */
 
 
-
-
-/* Removing outliers */
-/* TODO: Justify choice of test for outliers */
-DATA BCHCT_n;
-	set BCHCT;
-	ID = _n_;
-RUN;
-
-%Grubbs_test(dataset=BCHCT_n, var=mortality, id=ID);
-%Doornbos_test(dataset=BCHCT_n, var=mortality, id=ID);
-%Tukey_method(dataset=BCHCT_n, var=mortality, id=ID);
 
 
 
@@ -330,4 +449,37 @@ RUN;
       	label abs_norm_val="absolute normalized value (z_k)";
 	RUN;
 	title; 
+%MEND;
+
+%MACRO Skewness_Kurtosis_test(skewness=, kurtosis=, n=);
+	DATA approx;
+		N=&n;
+		G1=&skewness;
+		G2=&kurtosis;
+		b1=(N-2)*G1/(sqrt(N*(N-1)));
+		b2=G2*((N-2)*(N-3))/((N+1)*(N-1))+3*(N-1)/(N+1);
+
+		Cn=(3*(N**2+27*N-70)*(N+1)*(N+3))/((N-2)*(N+5)*(N+7)*(N+9));
+		Wn2=-1+SQRT(2*(Cn-1));
+		
+		Alphan=SQRT(2/(Wn2-1));
+		Dn=1/sqrt(log(sqrt(Wn2)));
+		Bn=sqrt((N+1)*(N+3)/(6*(N-2)))*b1;
+		Ts=Dn*log(Bn/Alphan+sqrt(1+(Bn/Alphan)**2));
+		
+		Mun=3*(N-1)/(N+1);
+		Sigman=sqrt((24*N*(N-2)*(N-3))/((N+3)*(N+5)*(N+1)**2));
+		Gamma1n=((6*(N**2-5*N+2))/((N+7)*(N+9)))*sqrt(6*(N+3)*(N+5)/(N*(N-2)*(N-3)));
+		An=6+(8/(Gamma1n))*(2/Gamma1n+sqrt(1+4/(Gamma1n**2)));
+		Un=(b2-Mun)/Sigman;
+		Tk=sqrt(9*An/2)*((9*An-2)/(9*An)-((1-2/An)/(1+Un*sqrt(2/(An-4))))**(1/3));
+		K2=Tk**2+Ts**2;
+		
+		Ps=2*min(cdf('Normal',Ts,0,1),1-cdf('Normal',Ts,0,1));
+		Pk=2*min(cdf('Normal',Tk,0,1),1-cdf('Normal',Tk,0,1));
+		PK2=1-cdf('chisq',K2,2);
+	RUN;
+	
+	PROC PRINT data=approx noobs;
+	RUN;
 %MEND;
