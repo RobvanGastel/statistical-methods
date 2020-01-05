@@ -5,12 +5,12 @@
 /* Mann-Whitney U Test */
 %MACRO Mann_Whitney_U(dataset, class, var);
 	ods select none;
-	PROC NPAR1WAY data=&dataset wilcoxon;
+	PROC NPAR1WAY data=&dataset wilcoxon correct=NO;
 		var &var;
 		class &class;
 		ods output WilcoxonScores=OUT_SCORES(
 			rename=(SumOfScores=S));
-		ods output WilcoxonTest=OUT_TEST
+		ods output WilcoxonTest=OUT_TEST;
 		ods output KruskalWallisTest=OUT_KRUS;
 	RUN;
 	ods select all;
@@ -24,7 +24,7 @@
 	/* Wilcoxon p-value */
 	PROC SQL;
 		CREATE TABLE P_TABLE AS
-			SELECT tProb2 FROM OUT_TEST;
+			SELECT Prob2 FROM OUT_TEST;
 	RUN;
 	
 	DATA OUT_SCORES;
@@ -46,7 +46,7 @@
 	
 	DATA RESULT;
 		merge OUT_N OUT_S P_TABLE P_KRUS;
-		P_VALUE = tProb2;
+		P_VALUE = Prob2;
 		P_KRUS = Prob;
 		U0 = S0 - N0 * (N0+1)/2;
 		U1 = S1 - N1 * (N1+1)/2;
@@ -539,7 +539,7 @@ RUN;
 		PK2=1-cdf('chisq',K2,2);
 	RUN;
 	
-	PROC PRINT approx noobs;
+	PROC PRINT data=approx noobs;
 	RUN;
 %MEND;
 
