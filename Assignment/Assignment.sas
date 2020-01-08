@@ -1,16 +1,15 @@
 LIBNAME SASDATA "/folders/myfolders/statistical-methods/data";
 
-
 DATA BCHC;
 	set SASDATA.BCHC;
 RUN;
-
 
 /* Exploration data */
 PROC MEANS data=BCHC n mean std var median min max;
 	class Race_Ethnicity;
 RUN;
 
+/* Encode the categorical data */
 DATA BCHCT;
 	set BCHC;
 	ID = _n_; 
@@ -20,11 +19,37 @@ DATA BCHCT;
 	if Race_Ethnicity = "Hispanic" then RE = 3;
 RUN;
 
-/* Distributions of mortality per Ethnicity group */
+/* idk how SAS works */
+DATA BCHCT;
+	set BCHCT;
+	if Place = "Boston, MA" then P = 0;
+	if Place = "Columbus, OH" then P = 1;
+	if Place = "Denver, CO" then P = 2;
+	if Place = "Detroit, MI" then P = 3;
+	if Place = "Fort Worth (Tarrant County), TX" then P = 4;
+	if Place = "Indianapolis (Marion County), IN" then P = 5;
+	if Place = "Kansas City, MO" then P = 6;
+	if Place = "Las Vegas (Clark County), NV" then P = 7;
+	if Place = "Long Beach, CA" then P = 8;
+	if Place = "Miami (Miami-Dade County), FL" then P = 9;
+	if Place = "Minneapolis, MN" then P = 10;
+	if Place = "New York City, NY" then P = 11;
+	if Place = "Oakland (Alameda County), CA" then P = 12;
+	if Place = "Philadelphia, PA" then P = 13;
+	if Place = "San Antonio, TX" then P = 14;
+	if Place = "San Diego County, CA" then P = 15;
+	if Place = "Seattle, WA" then P = 16;
+RUN;
+
+
+
+/* NORMAL TEST OF MORTALITY VARIABLE */
+/* Distributions of mortality per Ethnicity group test for  */
+/* Normality */
 /* TODO: Justify choise of test */
 
 /* Per Group */
-PROC UNIVARIATE data=BCHCT normal;
+PROC UNIVARIATE data=BCHCT normaltest;
 	where RE = 0;
 	var mortality;
 	histogram mortality/normal;
@@ -48,20 +73,22 @@ PROC UNIVARIATE data=BCHCT normal;
 	histogram mortality/normal;
 RUN;
 
-/* Total sample */
+/* Total sample test for normality */
 PROC UNIVARIATE data=BCHCT normal;
 	histogram mortality/normal;
 RUN;
 
+/* TODO: Test that could be performed looking at the tails */
 PROC MEANS data=BCHCT skewness kurtosis n;
 	var mortality;
 RUN;
-
 %Skewness_Kurtosis_test(skewness=1.1839264, kurtosis=19256820, n=148);
 /* Not significant */
 
 
-/* Dealing with NaN values */
+
+
+/* DEALING WITH NaN VALUES */
 PROC SQL;
 	SELECT count(*) FROM BCHCT
 	WHERE mortality is null;
@@ -90,7 +117,8 @@ PROC SORT data=BCHCT;
 RUN;
 
 /* We have 16 empty fields */
-PROC MI data=BCHCT nimpute=5 out=BCHCT_MI seed=42 minimum=0;
+/* TODO: If Imputation approach is used add to sensitivity analysis */
+PROC MI data=BCHCT nimpute=1 out=BCHCT_MI seed=42 minimum=0;
 	by Race_Ethnicity;
 	var mortality year;
 RUN;
@@ -99,72 +127,42 @@ RUN;
 /* https://support.sas.com/rnd/app/stat/papers/multipleimputation.pdf */
 /* Page 7 */
 
-PROC PRINT data=BCHCT_MI;
-RUN;
-
 /* Overview after filling in missing values for mortality */
 /* Increased the mean for asain/PI by +11, for hispanic by +3 */
 PROC MEANS DATA=BCHCT_MI mean var std median min max;
 	class Race_Ethnicity;
 RUN;
 
+/* TODO: add the MI reccords to the actual dataset */
 /* Replace dataset */
-DATA BCHCT;
-	set BCHCT_MI;
-RUN;
+/* DATA BCHCT; */
+/* 	set BCHCT_MI; */
+/* RUN; */
 
-/* Removing outliers */
+
+
+/* REMOVING OUTLIERS */
 /* TODO: Justify choice of test for outliers */
-
 /* From lecture: */
-/* Perform your analyses also on the complete data  */
-/* and report on the influence of excluding observations. */
-/* • Sensitivity analysis. */
-/* Discuss extreme observations with the data collector  */
-/* when possible. */
-
-
-PROC MEANS data=BCHCT;
-RUN;
-
-DATA BCHCT_mean;
-	set BCHCT;
-	mean = 163.9783784;
-RUN;
-
-
-/* All tests asumme normality which is why we need */
-/* BoxCox transform for lambda = 0, total set is normal */
-/* Both test for only 1 outliers and Grubbs is used */
-/* More in practice. */
-%Grubbs_test(dataset=BCHCT, var=mortality, id=ID);
-
-%Doornbos_test(dataset=BCHCT, var=mortality, id=ID);
-
-%Tukey_method(dataset=BCHCT, var=mortality, id=ID);
-
-/* For Tukey method */
-PROC BOXPLOT data=BCHCT_mean;
-	plot Mortality*mean/boxstyle=schematic;
-RUN;
-
-%Hampel(dataset=BCHCT, var=mortality, id=ID);
-
-/* Some of the outliers */
-PROC SQL;
-	SELECT * FROM BCHCT_n
-	WHERE ID IN (138, 139, 140, 142, 143, 144, 34);
-RUN;
-/* Tukey and Hampel give the same outliers except for 34 */
-/* 34 is an extreme value of Detriot. */
-/* The other values \approx 138-144 \139 are all from */
-/* San Antonio which indicate these are not outliers */
+/* * Sensitivity analysis if outliers removed */
+/* * Discuss when removing outliers */
 
 /* (BOX COX TRANSFORM BELOW SHOULD RUN FIRST) */
+/* Box Cox transform, λ ∈ {−2,−1/2,0,1/2,2} */
+DATA BCHC_BC; 
+	set BCHCT;
+	MTMINUS2 = (-1/2)*(mortality**-2 -1); 
+	MTMINUS1 = (-1)*(mortality**-1 -1); 
+	MTMINUS12 = (-2)*(mortality**-(0.5)-1); 
+	MT0 = log(mortality);
+	MTPLUS12 = (2)*(mortality**(1/2) -1); 
+	MTPLUS2 = (0.5)*(mortality**(2) -1);
+RUN;
+
 /* As we can transform data for our outlier test and know */
 /* The mortality is normal after transform lambda = 0 */
 /* We apply the hampel's rule as this one doesn't give us */
-/* The place san antonio with the extreme values */
+/* The place san antonio with the extreme values observed */
 
 %Hampel(dataset=BCHC_BC, var=MT0, id=ID);
 PROC SQL;
@@ -181,19 +179,9 @@ RUN;
 %Grubbs_test(dataset=BCHC_BC, var=MT0, id=ID);
 %Doornbos_test(dataset=BCHC_BC, var=MT0, id=ID);
 
-/* Transforming the data for normality */
-/* Box Cox transform */
-/* λ ∈ {−2,−1/2,0,1/2,2} */
-DATA BCHC_BC; 
-	set BCHCT;
-	MTMINUS2 = (-1/2)*(mortality**-2 -1); 
-	MTMINUS1 = (-1)*(mortality**-1 -1); 
-	MTMINUS12 = (-2)*(mortality**-(0.5)-1); 
-	MT0 = log(mortality);
-	MTPLUS12 = (2)*(mortality**(1/2) -1); 
-	MTPLUS2 = (0.5)*(mortality**(2) -1);
-RUN;
 
+/* Best Box-Cox transformation when looking at individual */
+/* groups. */
 PROC UNIVARIATE data=BCHC_BC normaltest;
 	where RE = 0;
 	var Mortality MTMINUS2 MTMINUS1 MTMINUS12
@@ -256,52 +244,42 @@ RUN;
 /* MTMINUS12 */
 /* TODO: Justify a test and pick one */
 
-/* MTMINUS12 looks OK */
 
 
-/* Multiple groups (ANOVA) on not transformed data */
-PROC MIXED data=BCHCT method=TYPE3 cl;
-	class RE;
-	model Mortality = /solution cl outpm=RM outp=RC;
-	random RE /solution;
-RUN;
+/* Question2: ANOVA */
 
-/* ANOVA on transformed data MINUS12 */
+/* ANOVA on transformed data MTINUS12 is approximately */
+/* MTMINUS12, Mortality or MT0 */
+/* 𝑦𝑖𝑗 = 𝜇 + 𝛼𝑖 + 𝛽𝑗 + 𝑒𝑖𝑗 */
+/* a is the fixed effect of Race_Ethnicity */
+/* b is the random effect of year */
 PROC MIXED data=BCHC_BC method=TYPE3 cl;
-	class RE;
-	model MTMINUS12 = /solution cl outpm=RM outp=RC;
-	random RE /solution;
+	class Year RE;
+	model MTMINUS12 = RE /solution cl;
+	random Year /solution;
+	lsmeans RE/diff=control adjust=tukey cl;
 RUN;
+/* Fixed effects, F-value 43.68 and p-value < 0.0001 */
+/* Random effects, F-value 0.06 and p-value = 0.9393 */
+/* ICC = 0 */
 
-/* TODO: Two-Way ANOVA  */
-PROC MIXED data=BCHCT method=TYPE3 cl;
-	class RE;
-	model Mortality = /solution cl DDFM=SAT outpm=RM outp=RC;
-	random RE /solution;
-	LSMEANS RE /CL;
-RUN;
-
-
-/* CHECK ANOVA ASSUMPTIONS: */
+/* CHECK ANOVA ASSUMPTIONS ANOVA */
 /* • Normality of the residuals */
 /* • Homogeneity of residual variance across groups */
 /* • Normality of the random effects */
+/* Are normality assumptions violated? */
+
+
+
+/* Friedman test */
 
 
 
 
 
 
-
-
-/* Measure dependence */
-PROC CORR data=BCHCT spearman kendall pearson 
-		fisher(biasadj=no)
-		plots=scatter(ellipse=none);
-	var RE mortality;
-RUN;
-/* Rejecting all H0 */
-/* There is some form of dependence? */
+/* Question3: Which places are relevant for further analysis? */
+/* From outlier tests san antonio */
 
 /* MACRO's */
 %MACRO Grubbs_test(dataset, var, id, alpha=0.05);
