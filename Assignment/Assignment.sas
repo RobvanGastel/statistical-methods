@@ -183,7 +183,6 @@ RUN;
 /* Best Box-Cox transformation when looking at individual */
 /* groups. */
 PROC UNIVARIATE data=BCHC_BC normaltest;
-	where RE = 0;
 	var Mortality MTMINUS2 MTMINUS1 MTMINUS12
 		MT0 MTPLUS12 MTPLUS2;
    	histogram Mortality /normal;
@@ -194,92 +193,73 @@ PROC UNIVARIATE data=BCHC_BC normaltest;
   	histogram MTPLUS12 /normal;
    	histogram MTPLUS2 /normal;
 RUN;
-/* Significant MTMINUS2, MTMINUS1, MTMINUS12 */
-/* TODO: Justify a test and pick one */
-
-PROC UNIVARIATE data=BCHC_BC normaltest;
-	where RE = 1;
-	var Mortality MTMINUS2 MTMINUS1 MTMINUS12
-		MT0 MTPLUS12 MTPLUS2;
-   	histogram Mortality /normal;
-	histogram MTMINUS2 /normal; 
-	histogram MTMINUS1 /normal;
-   	histogram MTMINUS12 /normal;
-   	histogram MT0 /normal;
-  	histogram MTPLUS12 /normal;
-   	histogram MTPLUS2 /normal;
-RUN;
-/* Significant MTMINUS12, MT0, MTPLUS12 (Not fully MTMINUS1) */
-/* TODO: Justify a test and pick one */
-
-
-PROC UNIVARIATE data=BCHC_BC normaltest;
-	where RE = 2;
-	var Mortality MTMINUS2 MTMINUS1 MTMINUS12
-		MT0 MTPLUS12 MTPLUS2;
-   	histogram Mortality /normal;
-	histogram MTMINUS2 /normal; 
-	histogram MTMINUS1 /normal;
-   	histogram MTMINUS12 /normal;
-   	histogram MT0 /normal;
-  	histogram MTPLUS12 /normal;
-   	histogram MTPLUS2 /normal;
-RUN;
-/* Significant MTMINUS2, MTMINUS1, (Not fully MTMINUS12)  */
-/* TODO: Justify a test and pick one */
-
-PROC UNIVARIATE data=BCHC_BC normaltest;
-	where RE = 3;
-	var Mortality MTMINUS2 MTMINUS1 MTMINUS12
-		MT0 MTPLUS12 MTPLUS2;
-   	histogram Mortality /normal;
-	histogram MTMINUS2 /normal; 
-	histogram MTMINUS1 /normal;
-   	histogram MTMINUS12 /normal;
-   	histogram MT0 /normal;
-  	histogram MTPLUS12 /normal;
-   	histogram MTPLUS2 /normal;
-RUN;
-/* Not significant for any transformation highest yield is */
-/* MTMINUS12 */
-/* TODO: Justify a test and pick one */
 
 
 
 /* Question2: ANOVA */
+/* WE CANT USE BOXCOX TRANSFORM FOR ANOVA AS WE THEN CANT */
+/* USE THE RESULTS FOR MORTALITY */
 
 /* ANOVA on transformed data MTINUS12 is approximately */
 /* MTMINUS12, Mortality or MT0 */
 /* 𝑦𝑖𝑗 = 𝜇 + 𝛼𝑖 + 𝛽𝑗 + 𝑒𝑖𝑗 */
 /* a is the fixed effect of Race_Ethnicity */
 /* b is the random effect of year */
-PROC MIXED data=BCHC_BC method=TYPE3 cl;
-	class Year RE;
-	model MTMINUS12 = RE /solution cl;
-	random Year /solution;
+PROC MIXED data=BCHCT method=TYPE3 cl;
+	class P RE;
+	model Mortality = RE /solution cl outp=pred;
+	random P /solution;
 	lsmeans RE/diff=control adjust=tukey cl;
 RUN;
-/* Fixed effects, F-value 43.68 and p-value < 0.0001 */
-/* Random effects, F-value 0.06 and p-value = 0.9393 */
-/* ICC = 0 */
+
+
+PROC IML;
+	/* Estimate COV of random effect */
+	S_g = 0; 
+	/* Estimate COV of residuals */
+	S_res = 56.7474;
+	ICC = S_g / (S_g + S_res);
+	
+	A = ICC;
+	create ICC from A [colname={'ICC'}]; 
+	append from A;
+	close ICC;
+RUN;
+/*  if ICC = 0 */
+/* This tells us that the variance between subjects  */
+/* is negligible compared to the variance within subjects. */
+
 
 /* CHECK ANOVA ASSUMPTIONS ANOVA */
-/* • Normality of the residuals */
-/* • Homogeneity of residual variance across groups */
-/* • Normality of the random effects */
 /* Are normality assumptions violated? */
 
+/* • Normality of the residuals */
+PROC UNIVARIATE data=pred normal;
+	var resid;
+	probplot resid /normal(mu=est sigma=est);
+RUN;
+
+/* • Homogeneity of residual variance across groups */
+PROC GLM data=pred;
+	class RE;
+	model resid = RE;
+	means RE/ hovtest=Bartlett;
+RUN;
+
+/* • Normality of the random effects */
 
 
-/* Friedman test */
 
 
-
+/* FRIEDMAN TEST? */
 
 
 
 /* Question3: Which places are relevant for further analysis? */
 /* From outlier tests san antonio */
+
+
+
 
 /* MACRO's */
 %MACRO Grubbs_test(dataset, var, id, alpha=0.05);
