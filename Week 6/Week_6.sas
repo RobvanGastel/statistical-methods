@@ -209,7 +209,7 @@ RUN;
 PROC MIXED data=WEEK6_Q3 method=TYPE3 cl; 
 	class CENTER TRT;
 	model RESP = TRT CENTER /solution cl;
-	LSMEANS TRT/DIFF=CONTROL ADJUST=TUKEY CL;
+	lsmeans TRT/diff=CONTROL adjust=TUKEY cl;
 RUN;
 
 /* c) */
