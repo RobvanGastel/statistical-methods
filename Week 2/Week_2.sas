@@ -61,7 +61,6 @@ RUN;
 /* Compare treatment (TRT) on birth weight (BW) */
 /* H0: m_1 = m_2 vs H1: m_1 != m_2 */
 /* 1 := (TRT = 1) etc. */
-
 PROC SORT data=WEEK2_Q2; 
 	by TRT;
 	PROC MEANS mean median std n skewness kurtosis; 
@@ -69,40 +68,34 @@ PROC SORT data=WEEK2_Q2;
 		by TRT; 
 RUN;
 
-DATA WEEK2_Q2_a;
-	set WEEK2_Q2; 
-	if TRT < 2;
-	ods output WilcoxonScores=WRS_01 (keep= Class N SumOfScores);
-	PROC NPAR1WAY wilcoxon; 
-		class TRT;
-		var BW;
+ods output WilcoxonScores=WRS_01 (keep= Class N SumOfScores);
+PROC NPAR1WAY data=WEEK2_Q2 wilcoxon correct=NO;
+	where TRT < 2;
+	class TRT;
+	var BW;
 	title 'TRT=0 vs TRT=1'; 
 RUN;
 
-DATA WEEK2_Q2_a; 
-	set WEEK2_Q2; 
-	if TRT > 0;
-	ods output WilcoxonScores=WRS_12 (keep= Class N SumOfScores);
-	PROC NPAR1WAY wilcoxon; 
-		class TRT;
-		var BW;
+ods output WilcoxonScores=WRS_12 (keep= Class N SumOfScores);
+PROC NPAR1WAY data=WEEK2_Q2 wilcoxon correct=NO; 
+	where TRT > 0;
+	class TRT;
+	var BW;
 	title 'TRT=0 vs TRT=2'; 
 RUN;
 
-DATA WEEK2_Q2_a; 
-	set WEEK2_Q2; 
-	if TRT NE 1; /* NE is the same as != */
-	ods output WilcoxonScores=WRS_02 (keep= Class N SumOfScores);
-	PROC NPAR1WAY wilcoxon; 
-		class TRT;
-		var BW;
-		exact wilcoxon/mc;
+ /* NE is the same as != */
+ods output WilcoxonScores=WRS_02 (keep= Class N SumOfScores);
+PROC NPAR1WAY wilcoxon data=WEEK2_Q2 correct=NO; 
+	where TRT NE 1;
+	class TRT;
+	var BW;
 	title 'TRT=1 vs TRT=2'; 
 RUN;
 
 /* Table: */
 /* TRT a vs b | Statistic (S) | P-value */
-/* 01 			256				0.1868  */
+/* 01 			256				0.1829  */
 /* 02 			519.5			0.0164  */
 /* 12 			261.5			0.4891  */
 
@@ -162,7 +155,7 @@ QUIT;
 
 /* Table: */
 /* TRT a vs b | Statistic (U) | P-value */
-/* 01 			277				0.1868  */
+/* 01 			277				0.1829  */
 /* 02 			170.5			0.4891  */
 /* 12 			538.5			0.0164  */
 
@@ -175,36 +168,27 @@ QUIT;
 /* d) */
 /* H0: F_1 = F_2 vs H1: F_1 != F_2 */
 /* F being CDF, and 1 := (TRT = 1) etc. */
-DATA WEEK2_Q2_d; 
-	set WEEK2_Q2; 
-	if TRT < 2; /* NE is the same as != */
-	PROC NPAR1WAY; 
-		class TRT;
-		var BW;
-		/* exact ks/mc; */
-	RUN;
-	title 'TRT=0 vs TRT=1'; 
+PROC NPAR1WAY data=WEEK2_Q2;
+	where TRT < 2;
+	class TRT;
+	var BW;
+	/* exact ks/mc */
+	title 'TRT=0 vs TRT=1';
 RUN;
 
-DATA WEEK2_Q2_d; 
-	set WEEK2_Q2; 
-	if TRT NE 1; /* NE is the same as != */
-	PROC NPAR1WAY; 
-		class TRT;
-		var BW;
-		/* exact ks/mc; */
-	RUN;
+PROC NPAR1WAY data=WEEK2_Q2;
+	where TRT NE 1; /* NE is the same as != */
+	class TRT;
+	var BW;
+	/* exact ks/mc; */
 	title 'TRT=0 vs TRT=2'; 
 RUN;
 
-DATA WEEK2_Q2_d; 
-	set WEEK2_Q2; 
-	if TRT > 0; /* NE is the same as != */
-	PROC NPAR1WAY; 
-		class TRT;
-		var BW;
-		/* exact ks/mc; */
-	RUN;
+PROC NPAR1WAY data=WEEK2_Q2;
+	where TRT > 0;
+	class TRT;
+	var BW;
+	/* exact ks/mc; */
 	title 'TRT=1 vs TRT=2'; 
 RUN;
 
@@ -264,14 +248,14 @@ RUN;
 
 /* Question 2.3 */
 /* a) */
-%MACRO mann_whitney_u(dataset, class, var);
+%MACRO Mann_Whitney_U(dataset, class, var);
 	ods select none;
-	PROC NPAR1WAY data=&dataset wilcoxon;
+	PROC NPAR1WAY data=&dataset wilcoxon correct=NO;
 		var &var;
 		class &class;
 		ods output WilcoxonScores=OUT_SCORES(
 			rename=(SumOfScores=S));
-		ods output WilcoxonTest=OUT_TEST
+		ods output WilcoxonTest=OUT_TEST;
 		ods output KruskalWallisTest=OUT_KRUS;
 	RUN;
 	ods select all;
@@ -285,7 +269,7 @@ RUN;
 	/* Wilcoxon p-value */
 	PROC SQL;
 		CREATE TABLE P_TABLE AS
-			SELECT tProb2 FROM OUT_TEST;
+			SELECT Prob2 FROM OUT_TEST;
 	RUN;
 	
 	DATA OUT_SCORES;
@@ -307,7 +291,7 @@ RUN;
 	
 	DATA RESULT;
 		merge OUT_N OUT_S P_TABLE P_KRUS;
-		P_VALUE = tProb2;
+		P_VALUE = Prob2;
 		P_KRUS = Prob;
 		U0 = S0 - N0 * (N0+1)/2;
 		U1 = S1 - N1 * (N1+1)/2;
@@ -339,21 +323,21 @@ DATA WEEK2_Q3_b;
 	set WEEK2_Q2; 
 	if TRT < 2;
 RUN;
-%mann_whitney_u(WEEK2_Q3_b, TRT, BW);
+%Mann_Whitney_U(WEEK2_Q3_b, TRT, BW);
 
 DATA WEEK2_Q3_b; 
 	set WEEK2_Q2; 
 	if TRT > 0;
 	title 'TRT=0 vs TRT=2'; 
 RUN;
-%mann_whitney_u(WEEK2_Q3_b, TRT, BW);
+%Mann_Whitney_U(WEEK2_Q3_b, TRT, BW);
 
 DATA WEEK2_Q3_b; 
 	set WEEK2_Q2; 
 	if TRT NE 1; /* NE is the same as != */
 	title 'TRT=1 vs TRT=2'; 
 RUN;
-%mann_whitney_u(WEEK2_Q3_b, TRT, BW);
+%Mann_Whitney_U(WEEK2_Q3_b, TRT, BW);
 
 /* Question 2.4 */
 DATA WEEK2_Q4;
@@ -616,14 +600,14 @@ RUN;
 /* Test statistic = 1.73 and p-value = 0.1080 */
 
 /* c) */
-PROC NPAR1WAY data=WEEK2_Q8 wilcoxon; 
+PROC NPAR1WAY data=WEEK2_Q8 wilcoxon correct=NO; 
 	class BATCH;
 	var OUTPUT;
 RUN;
 /* Test statistic = 120.5 and p-value = 0.2503 */
 
 /* d) */
-%mann_whitney_u(WEEK2_Q8, BATCH, OUTPUT);
+%Mann_Whitney_U(WEEK2_Q8, BATCH, OUTPUT);
 /* Test statistic (U_0) = 65.5 and p-value = 0.345 */
 
 /* e) */

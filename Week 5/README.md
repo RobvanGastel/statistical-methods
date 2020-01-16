@@ -12,8 +12,8 @@
 	* Test homogeneity of variance
 * Tail probabilities
 * Parametric outlier tests
-        * Doornbos test
-        * Grubbs test
+	* Doornbos test
+	* Grubbs test
 * ‘Non-parametric’ outlier tests
-        * Hample’s rule
-        * Tukey’s method
+	* Hample’s rule
+	* Tukey’s method

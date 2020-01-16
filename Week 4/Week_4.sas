@@ -119,7 +119,7 @@ PROC FREQ data=WEEK4_Q1;
 RUN;
 
 /* Use WRS to calculate Kruskal-Wallis test */
-PROC NPAR1WAY data=WEEK4_Q1 wilcoxon;
+PROC NPAR1WAY data=WEEK4_Q1 wilcoxon correct=NO;
 	class supplement;
 	var iq;
 RUN;
