@@ -13,7 +13,7 @@ RUN;
 /* TODO: Doesn't generate same results as answer */
 PROC UNIVARIATE data=WEEK5_Q1 normaltest;
 	var AGEM;
-	histogram AGEM/normal;
+	histogram AGEM/normal;`T
 	probplot AGEM/normal(mu=est sigma=est);
 RUN;
 
@@ -445,11 +445,31 @@ RUN;
 /* TODO */
 
 /* Question 5.5 */
+DATA RCT;
+	set SASDATA.RCT;
+	where TIME = 1;
+RUN;
 
 /* a) */
-/* TODO */
+ods output SolutionR = RCT_R;
+PROC MIXED data=RCT method=TYPE3 cl;
+	class ID;
+	model RESP = /solution cl outpm=RM outp=RC;
+	random ID /solution;
+RUN;
+
+PROC UNIVARIATE data=RCT_R normaltest;
+	var Estimate;
+	histogram Estimate/normal;
+	probplot Estimate/normal(mu=est sigma=est);
+RUN;
+/* The histogram plot has a deviation from the normal */
+/* distribution around the mean and for the prob plot we */
+/* can see the deviation around the tails. */
+
 /* b) */
-/* TODO */
+/* As we rejected normality we would prefer to use the  */
+/* kruskal-wallis test */
 
 /* Question 5.6 */
 DATA WEEK5_Q6; 
