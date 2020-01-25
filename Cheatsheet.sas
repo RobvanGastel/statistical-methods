@@ -1,8 +1,76 @@
 /* Week 1: Intervals */
+/* DESC: Used to approximate the power of test with ns runs and n samples */
+%MACRO samples(dataset=, ns=, n=);
+	PROC SURVEYSELECT data=&dataset noprint method=urs n=&n out=FINAL;
+	RUN;
+	
+	DATA FINAL;
+		set FINAL; 
+		sampleno = 1;
+	RUN;
+	
+	%do sn = 2 %to &ns;
+		PROC SURVEYSELECT data=&dataset noprint
+		method=urs n=&n out=SAMPLEI;
+	RUN;
+	
+	DATA SAMPLEI;
+		set SAMPLEI;
+		sampleno = &sn;
+	RUN;
+	
+	DATA FINAL;
+		set Final SAMPLEI;
+	RUN;
+	%end;
+	
+	PROC DATASETS library=work noprint;
+		delete SAMPLEI;
+	RUN;
+%MEND;
 
 /* Week 2: Independent Samples */
+/* DESC: Two sample binary comparison test */
+%MACRO binary_hypothesis(dataset, var, class); 
+	PROC MEANS data=&dataset n sum noprint;
+		var &var;
+		class &class;
+		output out=OUT n=N sum=COUNT; 
+	RUN;
+
+	DATA OUT0;
+		set OUT;
+		COUNT0 = COUNT; 
+		N0 = N;
+		P0 = COUNT0 / N0; 
+		where &class = 0; 
+		keep COUNT0 N0 P0; 
+	RUN;
+	
+	DATA OUT1;
+		set OUT;
+		COUNT1 = COUNT; 
+		N1 = N;
+		P1 = COUNT1 / N1; 
+		where &class = 1; 
+		keep COUNT1 N1 P1; 
+	RUN;
+    
+    DATA OUT;
+		merge OUT0 OUT1;
+		P = (COUNT0 + COUNT1) / (N0 + N1);
+		STAT = (P0 - P1) / sqrt(P * (1-P) * (1/N0 + 1/N1));
+		CHISQ = STAT **2;
+		P_VALUE = 2*min(cdf("normal", STAT, 0, 1), 1-cdf("normal", STAT, 0, 1)); 
+	RUN;
+	
+	PROC PRINT data=OUT; 
+		var STAT CHISQ P_VALUE; 
+	RUN;
+%MEND;
 
 /* Mann-Whitney U Test */
+/* DESC: Test extension on WRS */
 %MACRO Mann_Whitney_U(dataset, class, var);
 	ods select none;
 	PROC NPAR1WAY data=&dataset wilcoxon correct=NO;
@@ -73,6 +141,7 @@
 	title;
 %MEND;
 
+/* TODO: DESC */
 %MACRO Binary_hypothesis(dataset, var, class); 
 	PROC MEANS data=&dataset n sum noprint;
 		var &var;

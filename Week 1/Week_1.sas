@@ -419,7 +419,7 @@ RUN;
 /* Its done the same as F but use Clopper-Pearson (exact) */
 
 /* Question 1.7 */
-%macro samples(dataset=,ns=,n=);
+%MACRO samples(dataset=, ns=, n=);
 	PROC SURVEYSELECT data=&dataset noprint method=urs n=&n out=FINAL;
 	RUN;
 	
@@ -446,7 +446,7 @@ RUN;
 	PROC DATASETS library=work noprint;
 		delete SAMPLEI;
 	RUN;
-%mend;
+%MEND;
 
 /* a) */
 %samples(dataset=WEEK1, ns=1000, n=10);
@@ -471,10 +471,10 @@ RUN;
 /* c) */
 /* We can see a normal distribution for the mean */
 /* and a Chi-Square distribution for the variance */
-ods select hisotgram;
+ods select histogram;
 PROC UNIVARIATE data=AVG_FINAL;
    histogram mean/normal;
-   histogram variance/normal;
+   histogram variance/gamma(alpha=est sigma=est);
 RUN;
 
 /* Question 1.8 */
@@ -493,8 +493,8 @@ RUN;
 
 /* c) */
 /* Does the CLT apply? */
-/* Seems like it does */
-%samples(dataset=WEEK1, ns=100, n=253);
+/* As we increase ns it becomes more clear. */
+%samples(dataset=WEEK1, ns=200, n=253);
 
 PROC MEANS data=FINAL mean noprint; 
 	var BW;
@@ -504,13 +504,27 @@ RUN;
 
 PROC UNIVARIATE data=MEANSBW; 
 	hist BW_MEAN /normal;
-run; 
-%mend;
+run;
+/* Yes, it seems like n is large enough to to assume that */
+/* the sample average y bar follows a normal distribution */
 
 /* d) */
 /* 3 identical copies will not change the effect size */
+/* As a result, the p-value will be 3 */
+/* smaller and H0 (if false) will be rejected faster. */
 
 /* e) */
+PROC MEANS data=WEEK1 mean;
+	var BW;
+RUN;
+
+PROC TTEST data=WEEK1 h0=3200 sides=U alpha=0.05;
+	var BW;
+RUN;
+PROC TTEST data=WEEK1 h0=2800 sides=L alpha=0.05;
+	var BW;
+RUN;
+/* 2 * min p val = 2 * 0.0143 = 0.0285 */
 /* It equals the p-value of question a */
 
 /* f) */
@@ -524,8 +538,11 @@ RUN;
 ods exclude none; 
 ods graphics on;
 
+PROC PRINT data=POWER;
+
 /* g) */
-/* Power is about 66%, Reject H0 */
+/* Power is about 66%, to Reject H0 */
+/* This heavily depends on the amount of simulations (ns) */
 DATA RESULTS; 
    set POWER; 
    RejectH0 = (Probt <= 0.05); 
@@ -541,4 +558,48 @@ RUN;
 /* Power is expected to go down with smaller  */
 /* sample size */
 
+/* A demonstrative test for n=100 */
+%samples(dataset=WEEK1, ns=1000, n=100);
 
+ods graphics off;
+ods exclude all;
+PROC TTEST data=FINAL h0=3200 sides=u alpha=0.05;
+	var BW;
+	by SAMPLENO;
+	ods output ttests=POWER(keep=PROBT);
+RUN;
+ods exclude none; 
+ods graphics on;
+
+DATA RESULTS; 
+   set POWER; 
+   RejectH0 = (Probt <= 0.05); 
+RUN; 
+
+PROC FREQ data=RESULTS; 
+   tables RejectH0 / nocum binomial(level='1');
+RUN;
+/* The power of the test with n=100 is approx 0.33 */
+
+/* and again for n=50 */
+%samples(dataset=WEEK1, ns=1000, n=50);
+
+ods graphics off;
+ods exclude all;
+PROC TTEST data=FINAL h0=3200 sides=u alpha=0.05;
+	var BW;
+	by SAMPLENO;
+	ods output ttests=POWER(keep=PROBT);
+RUN;
+ods exclude none; 
+ods graphics on;
+
+DATA RESULTS; 
+   set POWER; 
+   RejectH0 = (Probt <= 0.05); 
+RUN; 
+
+PROC FREQ data=RESULTS; 
+   tables RejectH0 / nocum binomial(level='1');
+RUN;
+/* The power of the test with n=50 is approx 0.21 */
