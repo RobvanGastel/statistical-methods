@@ -970,36 +970,37 @@ RUN;
 
 DATA WEEK3_Q9_W;
 	set WEEK3_Q9_W;
-	/* if IMP10<85 or IMP18<85 then delete; */
-	/* cmiss(of IMP10 IMP18) or */
+/* 	if IMP10<85 or IMP18<85 then delete; */
+	if cmiss(of IMP10 IMP18) then delete;
 RUN;
 
 /* a) */
 DATA WEEK3_Q9_a;
 	set WEEK3_Q9_W;
 	IMP_DIFF =  IMP18 - IMP10;
-	IMP_RATIO = IMP18 / IMP10;
-	IMP_0RATIO = IMP_RATIO - 1;
-	IMP_LDIFF = log(IMP_RATIO);
-	IMP_SIGN = (IMP18 >= IMP10);
-RUN;
-
-/* Number of ties */
-PROC SQL;
-	SELECT count(*) FROM WEEK3_Q9_a
-	WHERE IMP_0RATIO = 0;
-RUN;
-
-PROC FREQ data=WEEK3_Q9_a;
-	tables IMP_SIGN;
+/* 	IMP_RATIO = IMP18 / IMP10; */
+/* 	IMP_0RATIO = IMP_RATIO - 1; */
+/* 	IMP_LDIFF = log(IMP_RATIO); */
+/* 	IMP_SIGN = (IMP18 >= IMP10); */
 RUN;
 
 /* Sign Test */
 /* 2 ⋅ min(𝑃(𝑆 ≤ 𝑠),𝑃(𝑆 ≥ 𝑠)), for UPL and LPL */
 PROC IML;
-	LPL = cdf("Binom", 108, 0.5, 228);
-	UPL = 1 - cdf("Binom", 127, 0.5, 228);
+	use WEEK3_Q9_a;
+	read all var{IMP_DIFF};
+	CLOSE WEEK3_Q9_a;
+	
+	plus = sum((IMP_DIFF>0));
+	min = sum((IMP_DIFF<0));
+	zero = sum((IMP_DIFF=0));
+	total = plus+min;
+	print(total||min||plus||zero);
+	
+	LPL = cdf("Binom", plus, 0.5, total);
+	UPL = 1 - cdf("Binom", plus-1, 0.5, total);
 
+	print(LPL||UPL);
 	A=LPL||UPL;
 	
 	create SignT from A [colname={'LPL' 'UPL'}]; 
