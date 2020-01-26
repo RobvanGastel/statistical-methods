@@ -7,25 +7,25 @@ LIBNAME SASDATA "/folders/myfolders/statistical-methods/data";
 
 DATA WEEK5_Q1;
 	set SASDATA.IVF;
+	where PER=4;
 RUN;
 
 /* a) */
-/* TODO: Doesn't generate same results as answer */
 PROC UNIVARIATE data=WEEK5_Q1 normaltest;
 	var AGEM;
-	histogram AGEM/normal;`T
+	histogram AGEM/normal;
 	probplot AGEM/normal(mu=est sigma=est);
 RUN;
 
 /* Shapiro-Wilk */
-/* Test statistic = 0.992907 and p-value = 0.0011 */
+/* Test statistic = 0.992907 and p-value = 0.3284 */
 /* Conclusion: */
 /* Is sensitive to non symmetric departures from normality. */
 /* This distribution seems relatively symmetri. */
 
 /* b) */
 /* Kolmogorov-Smirnov */
-/* Test statistic = 0.040049 and p-value < 0.0100 */
+/* Test statistic = 0.040049 and p-value >0.1500 */
 /* Conclusion: */
 /* As it compares the vertical distance (supremum) between */
 /* the distributions we can see that there is a relatively */
@@ -33,7 +33,7 @@ RUN;
 
 /* c) */
 /* Cramer-von Mises */
-/* Test statistic = 0.178199 and p-value = 0.0099 */
+/* Test statistic = 0.178199 and p-value >0.2500 */
 /* Conclusion: */
 /* Puts more weight on the tails as the tails deviate less */
 /* it gets a higher score then the other tests as the tails */
@@ -41,13 +41,18 @@ RUN;
 
 /* d) */
 /* Anderson-Darling */
-/* Test statistic = 1.271699 and p-value < 0.0050 */
+/* Test statistic = 1.271699 and p-value >0.2500 */
 /* Conclusion: */
 /* As it looks at the integral of the distance between F_n */
-/* and F. This has the smallest p-value of all the tests. */
+/* and F. */
 
 /* e) */
-/* TODO */
+PROC FREQ data=WEEK5_Q1;
+	tables AGEM;
+RUN;
+
+/* We observe the data has a lot of ties thus, Anderson-Darling */
+/* is the best choice. */
 
 /* f) and g) */
 %MACRO Skewness_Kurtosis_test(skewness=, kurtosis=, n=);
@@ -85,13 +90,11 @@ RUN;
 	RUN;
 %MEND;
 
-/* Skewness = -0.1773114, Kurtosis = -0.1983322 */
-/* and n = 759 */
+PROC UNIVARIATE data=WEEK5_Q1;
+	var AGEM;
+RUN;
 
-%Skewness_Kurtosis_test(skewness=-0.1773114, kurtosis=-0.198322, n=759);
-
-/* h) */
-/* TODO */
+%Skewness_Kurtosis_test(skewness=-0.178018, kurtosis=-0.1849355, n=253);
 
 /* Question 5.2 */
 /* BW is approximately normal at lambda = 2 */
@@ -424,19 +427,41 @@ PROC MIXED data=COAG_T method=TYPE3 cl;
 	random patient;
 RUN;
 
-/* Shows alot of ties (freq > 1) */
-PROC FREQ data=RC;
-	tables Resid;
-RUN;
+/* DATA RM; */
+/* 	set RM; */
+/* 	ID = _n_; */
+/* RUN; */
+/*  */
+/* DATA RC; */
+/* 	set RC; */
+/* 	ID = _n_; */
+/* RUN; */
+/*  */
+/* DATA RM; */
+/* 	set RM;  */
+/* 	RESIDM=RESID;  */
+/* 	PredM=Pred;  */
+/* 	drop RESID Pred;  */
+/* RUN; */
+/*  */
+/* DATA PREDMERGE;  */
+/* 	merge RM RC;  */
+/* 	by ID TYPE;  */
+/* RUN; */
+/*  */
+/* DATA PREDMERGE;  */
+/* 	set PREDMERGE; */
+/* 	EBLUP=PRED-PREDM; */
+/* RUN; */
 
-PROC UNIVARIATE data=RC normaltest;
-	var Resid;
-	histogram Resid/normal;
-	probplot Resid/normal(mu=est sigma=est);
+PROC UNIVARIATE data=RC normal;
+	var RESID;
+	by type;
+	probplot RESID /normal(mu=est sigma=est);
 RUN;
 
 /* Anderson-Darling */
-/* Test Statistic = 1.158151 and p-value <0.0050 */
+/* Test statistic = 0.9203 and the p-value = 0.0203 */
 
 /* b) */
 /* TODO */
@@ -458,10 +483,10 @@ PROC MIXED data=RCT method=TYPE3 cl;
 	random ID /solution;
 RUN;
 
-PROC UNIVARIATE data=RCT_R normaltest;
-	var Estimate;
-	histogram Estimate/normal;
-	probplot Estimate/normal(mu=est sigma=est);
+PROC UNIVARIATE data=RC normaltest;
+	var Resid;
+	histogram Resid/normal;
+	probplot Resid/normal(mu=est sigma=est);
 RUN;
 /* The histogram plot has a deviation from the normal */
 /* distribution around the mean and for the prob plot we */
@@ -550,5 +575,5 @@ RUN;
 
 PROC MEANS data=Tukey n;
 RUN;
-/* 4.909% of the data is classified as outlier and the */
+/* 4,909% of the data is classified as outlier and the */
 /* actual value we expected is 6,61%. */

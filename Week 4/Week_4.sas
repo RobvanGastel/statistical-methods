@@ -56,22 +56,23 @@ RUN;
 PROC MIXED data=WEEK4_Q1 method=TYPE3 cl; 
 	class supplement;
 	model iq = supplement /solution cl;
+	lsmeans supplement /diff cl;
 RUN;
 /* For 0 the estimate is -4.1550 and p-value = 0.0747 */
 /* Thus, we can't reject H0. */
 
 /* c) */
 /* Create the CI for mu */
-PROC UNIVARIATE data=WEEK4_Q1;
+PROC UNIVARIATE data=WEEK4_Q1 cibasic;
 RUN;
 
 /* TODO: This estimation is off by +-0.06 for mu */
 PROC IML;
 	Y_bar = 105.6775;
-	std = 7.38253;
+	std = 7.38253266;
 	alpha = 0.05;
 	n = 40;
-	qt = quantile("T", alpha/2, n);
+	qt = quantile("T", alpha/2, n-1);
 
 	LPL = Y_bar + qt * (std/sqrt(n));
 	UPL = Y_bar - qt * (std/sqrt(n));
@@ -83,17 +84,32 @@ PROC IML;
 QUIT;
 
 /* CI for Alpha's */
-/* TODO: Resulting CI for alpha's should be, */
-/* alpha + Standard error */
-/* alpha_1 = -2.0425 */
-/* alpha_2 = 2.0725 */
+/* SuppA alpha */
 PROC IML;
-	Y_bar = -2.0425;
-	std = 6.2670;
+	Y_bar = -2.0725;
+	std = 8.0465266;
 	alpha = 0.05;
 	n = 40;
-	k=20;
-	qt = quantile("T", 1-alpha/2, n-k);
+	k = 20;
+	qt = quantile("T", 1-alpha/2, n-k-1);
+
+	LPL = Y_bar - qt * sqrt(std**2/n);
+	UPL = Y_bar + qt * sqrt(std**2/n);
+	
+	A = LPL||UPL;
+	create CI_c from A [colname={'LPL','UPL'}]; 
+	append from A;
+	close CI_c;
+QUIT;
+
+/* suppB alpha */
+PROC IML;
+	Y_bar = 2.0825;
+	std = 7.38253266;
+	alpha = 0.05;
+	n = 40;
+	k = 20;
+	qt = quantile("T", 1-alpha/2, n-k-1);
 
 	LPL = Y_bar - qt * sqrt(std**2/n);
 	UPL = Y_bar + qt * sqrt(std**2/n);
@@ -127,72 +143,73 @@ RUN;
 /* Thus we can't reject H0 */
 
 /* f) */
-/* TODO: Power of tests */
+/* As normality is not violated the ANOVA is a lot */
+/* more powerful than Kruskal-Wallis. */
 
 /* g) */
 DATA WEEK4_Q1_g;
 	input supplement$ iq@@; 
 	datalines;
-	suppB 104.3 
-	suppB 99.0 
-	suppB 132.4 
-	suppB 109.4
-	suppB 112.4 
-	suppB 101.9 
-	suppB 100.7 
-	suppB 100.5
-	suppB 105.3 
-	suppB 110.5 
-	suppA 97.0 
-	suppA 106.7
-	suppA 96.7 
-	suppA 105.4 
-	suppA 106.3 
-	suppA 99.7
-	suppA 109.5 
-	suppA 99.8 
-	suppA 102.7 
-	suppA 106.3
-	suppB 112.5 
-	suppB 114.0
-	suppB 98.8
-	suppB 98.9
-	suppB 97.0
-	suppB 112.1
-	suppB 114.8
-	suppB 100.6
-	suppB 110.7
-	suppB 119.3
-	suppA 108.1
-	suppA 97.1
-	suppA 105.6
-	suppA 110.0
-	suppA 108.4
-	suppA 106.3
-	suppA 93.7
-	suppA 107.7
-	suppA 97.7
-	suppA 107.3
-	suppC 103.3
-	suppC 104.0
-	suppC 117.5
-	suppC 119.0
-	suppC 135.4
-	suppC 113.4
-	suppC 103.8
-	suppC 103.9
-	suppC 115.4
-	suppC 106.9
-	suppC 102.0
-	suppC 117.1
-	suppC 105.7
-	suppC 105.5
-	suppC 119.8
-	suppC 105.6
-	suppC 110.3
-	suppC 115.5
-	suppC 115.7
-	suppC 124.3
+suppB 104.3 
+suppB 99.0 
+suppB 132.4 
+suppB 109.4
+suppB 112.4 
+suppB 101.9 
+suppB 100.7 
+suppB 100.5
+suppB 105.3 
+suppB 110.5 
+suppA 97.0 
+suppA 106.7
+suppA 96.7 
+suppA 105.4 
+suppA 106.3 
+suppA 99.7
+suppA 109.5 
+suppA 99.8 
+suppA 102.7 
+suppA 106.3
+suppB 112.5 
+suppB 114.0
+suppB 98.8
+suppB 98.9
+suppB 97.0
+suppB 112.1
+suppB 114.8
+suppB 100.6
+suppB 110.7
+suppB 119.3
+suppA 108.1
+suppA 97.1
+suppA 105.6
+suppA 110.0
+suppA 108.4
+suppA 106.3
+suppA 93.7
+suppA 107.7
+suppA 97.7
+suppA 107.3
+suppC 103.3
+suppC 104.0
+suppC 117.5
+suppC 119.0
+suppC 135.4
+suppC 113.4
+suppC 103.8
+suppC 103.9
+suppC 115.4
+suppC 106.9
+suppC 102.0
+suppC 117.1
+suppC 105.7
+suppC 105.5
+suppC 119.8
+suppC 105.6
+suppC 110.3
+suppC 115.5
+suppC 115.7
+suppC 124.3
 	;
 RUN;
 
@@ -203,25 +220,25 @@ RUN;
 PROC MIXED data=WEEK4_Q1_g method=TYPE3 cl; 
 	class supplement;
 	model iq = supplement /solution cl; 
+	lsmeans supplement /diff cl;
 RUN;
-/* alpha_3 = -8.6050 -(-4.45) = -4.155 */
 
 /* h) */
 /* Paired ttest is inline with results */
-PROC TTEST;
-	where supplement NE 'suppA'
+PROC TTEST data=WEEK4_Q1_g;
+	where supplement in ("suppB", "suppC");
 	class supplement;
 	var iq; 
 RUN;
 
 PROC TTEST data=WEEK4_Q1_g;
-	where supplement NE 'suppB';
+	where supplement in ("suppB", "suppA");;
 	class supplement;
 	var iq; 
 RUN;
 
 PROC TTEST data=WEEK4_Q1_g;
-	where supplement NE 'suppC';
+	where supplement in ("suppA", "suppC");;
 	class supplement;
 	var iq; 
 RUN;
@@ -256,10 +273,10 @@ PROC SQL;
 RUN;
 
 /* a) */
-ods output CovParms = Cov;
+ods output "Covariance Parameter Estimates" = Cov;
 PROC MIXED data=COAG_T method=TYPE3 cl;
 	class patient type;
-	model value = /solution cl outp=pred;
+	model value = /solution cl;
 	random patient;
 RUN;
 
@@ -288,18 +305,49 @@ RUN;
 ods output SolutionR=COAG_Solution;
 PROC MIXED data=COAG_T method=TYPE3 cl;
 	class patient type;
-	model value = /solution cl outp=pred;
+	model value = /solution cl outp=RC outpm=RM;
 	random patient /solution;
 RUN;
 /* Patient 9, EBLUP = -2.0071 */
 
 /* d) */
 /* Output table */
-PROC SORT data=COAG_Solution;
-	by patient;
+PROC PRINT data=RM;
+PROC PRINT data=RC;
+
+DATA RM;
+	set RM;
+	ID = _n_;
 RUN;
 
-%MACRO Runs_test(data=,var=,alpha=);
+DATA RC;
+	set RC;
+	ID = _n_;
+RUN;
+
+DATA RM;
+	set RM; 
+	RESIDM=RESID; 
+	PredM=Pred; 
+	drop RESID Pred; 
+RUN;
+
+PROC SORT data=RM;
+	by Patient;
+RUN;
+
+
+DATA PREDMERGE; 
+	merge RM RC; 
+	by ID TYPE; 
+RUN;
+
+DATA PREDMERGE; 
+	set PREDMERGE;
+	EBLUP=PRED-PREDM;
+RUN;
+
+%MACRO Runs_test(data=, var=, alpha=);
 	PROC IML;
 		use &data;
 		read all var {&var};
@@ -382,25 +430,33 @@ RUN;
 
 /* Look at the conditional runs test */
 /* As we're not interested in serial correlation */
+%Runs_test(data=PREDMERGE, 
+		 var=EBLUP,
+		 alpha=0.05);
+
+/* e) */
+/* Through the randomness tests we check the  */
+/* independence of the residuals.  */
+
+/* f) */
+/* TODO */
+PROC SORT data=COAG_SOLUTION;
+	by Patient;
+RUN;
+
 %Runs_test(data=COAG_Solution, 
 		 var=Estimate,
 		 alpha=0.05);
 
-/* 2 ways of investigating residuals */
-/* Marginal and conditional */
-/* ods output SolutionR=COAG_Solution; */
-/* PROC MIXED data=COAG_T method=TYPE3 cl; */
-/* 	class patient type; */
-/* 	model value = /solution cl outpm=RM outp=RC; */
-/* 	random patient /solution; */
-/* RUN; */
 
-/* e) */
-/* We have p-value = 0.81412 and Statistic = 0.23511 */
-/* Thus we can't reject H0 */
+PROC SORT data=predmerge;
+	by EBLUP;
+RUN;		 
 
-/* f) */
-/* TODO: To check normality assumption of the residuals */
+%Runs_test(data=PREDMERGE, 
+		 var=RESIDM,
+		 alpha=0.05);
+
 
 /* Question 4.6 */
 DATA RCT;
@@ -412,7 +468,6 @@ RUN;
 /* Yij = mu + alpha_i + e_ij */
 
 /* b) */
-ods output SolutionR = RCT_R;
 PROC MIXED data=RCT method=TYPE3 cl;
 	class ID;
 	model RESP = /solution cl outpm=RM outp=RC;
@@ -421,8 +476,34 @@ RUN;
 /* EBLUPS Patient 1 = -0.01764 and Patient 2 = -0.5176 */
 
 /* c) */
-/* TODO: Values dont correspond */
-%runs_test(data=RCT_R,var=Estimate,alpha=0.05);
+DATA RM;
+	set RM;
+	ID = _n_;
+RUN;
+
+DATA RC;
+	set RC;
+	ID = _n_;
+RUN;
+
+DATA RM;
+	set RM; 
+	RESIDM=RESID; 
+	PredM=Pred; 
+	drop RESID Pred; 
+RUN;
+
+DATA PREDMERGE; 
+	merge RM RC; 
+	by ID RESP; 
+RUN;
+
+DATA PREDMERGE; 
+	set PREDMERGE;
+	EBLUP=PRED-PREDM;
+RUN;
+
+%runs_test(data=PREDMERGE, var=EBLUP, alpha=0.05);
 
 /* Question 4.7 */
 DATA WEEK4_Q7;
@@ -465,6 +546,8 @@ PROC IMPORT datafile="/folders/myfolders/statistical-methods/data/Groningen.csv"
 	dbms = CSV;
 RUN;
 
+PROC PRINT data=WEEK4_Q9;
+
 /* a) */
 PROC REG data=WEEK4_Q9 plots=none;
 	model X = /dwProb;
@@ -472,8 +555,7 @@ RUN;
 /* 1st Order Autocorrelation = 0.991 */
 
 /* b) */
-/* TODO */
+/* It appears we reject the null hypothesis. */
 %runs_test(data=WEEK4_Q9, var=X, alpha=0.05);
 
-/* Question 4.10 */
-/* TODO: */
+

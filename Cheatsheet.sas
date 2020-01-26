@@ -30,7 +30,7 @@
 %MEND;
 
 /* Week 2: Independent Samples */
-/* DESC: Two sample binary comparison test */
+/* DESC: Two sample binary comparison using Chi-Square test */
 %MACRO binary_hypothesis(dataset, var, class); 
 	PROC MEANS data=&dataset n sum noprint;
 		var &var;
@@ -139,45 +139,6 @@
 		P1="P(class0 <= class1)";
 	RUN;
 	title;
-%MEND;
-
-/* TODO: DESC */
-%MACRO Binary_hypothesis(dataset, var, class); 
-	PROC MEANS data=&dataset n sum noprint;
-		var &var;
-		class &class;
-		output out=OUT n=N sum=COUNT; 
-	RUN;
-
-	DATA OUT0;
-		set OUT;
-		COUNT0 = COUNT; 
-		N0 = N;
-		P0 = COUNT0 / N0; 
-		where &class = 0; 
-		keep COUNT0 N0 P0; 
-	RUN;
-	
-	DATA OUT1;
-		set OUT;
-		COUNT1 = COUNT; 
-		N1 = N;
-		P1 = COUNT1 / N1; 
-		where &class = 1; 
-		keep COUNT1 N1 P1; 
-	RUN;
-    
-    DATA OUT;
-		merge OUT0 OUT1;
-		P = (COUNT0 + COUNT1) / (N0 + N1);
-		STAT = (P0 - P1) / sqrt(P * (1-P) * (1/N0 + 1/N1));
-		CHISQ = STAT **2;
-		P_VALUE = 2*min(cdf("normal", STAT, 0, 1), 1-cdf("normal", STAT, 0, 1)); 
-	RUN;
-	
-	PROC PRINT data=OUT; 
-		var STAT CHISQ P_VALUE; 
-	RUN;
 %MEND;
 
 /* Week 3: Dependence */
@@ -489,7 +450,7 @@
 
 /* Week 4: ANOVA and randomness */
 
-/* Before a Runs test sort the input */
+/* Important! Before a Runs test sort the input */
 PROC SORT data=COAG_Solution;
 	by patient;
 RUN;
@@ -578,7 +539,7 @@ RUN;
 
 /* Week 5: Normality and Outliers */
 
-/* Skewness and Kurtosis tests for normality */
+/* DESC: Skewness and Kurtosis tests for normality */
 %MACRO Skewness_Kurtosis_test(skewness=, kurtosis=, n=);
 	DATA approx;
 		N=&n;

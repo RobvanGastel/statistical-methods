@@ -118,6 +118,7 @@ DATA WEEK6_Q1_c;
 	;
 RUN;
 
+/* TODO */
 PROC MIXED data=WEEK6_Q1_c method=TYPE3 cl; 
 	class supplement;
 	model iq = supplement /solution cl;

@@ -685,7 +685,6 @@ RUN;
 /* and frank's alpha = 3.5580449 */
 %SIM_Clay(nsim=700, alpha=1.10784575, seed=6789, dataset=WEEK3_Q4_W, uvar=RESP1);
 %SIM_Frk(nsim=700, alpha=3.5580449, seed=6789, dataset=WEEK3_Q4_W, uvar=RESP1);
-
 /* The simulation fails after 324 data points */
 
 PROC SGPLOT data=WEEK3_Q4_M aspect=1;
@@ -799,7 +798,45 @@ RUN;
 /* in medians of the groups. */
 
 /* Question 3.7 */
-/* TODO */
+/* a) */
+DATA WEEK3_Q7;
+	set SASDATA.IVF;
+	where PER = 4 or PER = 18;
+RUN;
+
+PROC TRANSPOSE out=WEEK3_Q7_wide(drop = _NAME_ _LABEL_) 
+		data=WEEK3_Q7 prefix=IMP;
+	by ID;
+	id PER;
+	var IMP; 
+RUN;
+
+DATA WEEK3_Q7_wide;
+	set WEEK3_Q7_wide;
+	DIFF = IMP4 - IMP18;
+	RATIO = IMP4/IMP18;
+	RATIO_0 = RATIO-1;
+	LDIFF = log(RATIO);
+RUN;
+
+PROC UNIVARIATE data=WEEK3_Q7_wide normaltest;
+	var DIFF LDIFF RATIO;
+	histogram /normal;
+    ods select histogram;
+RUN;
+/* LDIFF and RATIO seem to approximate a normal  */
+/* distribution. DIFF does not approximate a normal */
+/* distribution and is not symmetric. */
+
+/* b) */
+PROC UNIVARIATE data=WEEK3_Q7_wide mu0=0 0 1;
+	var DIFF LDIFF RATIO;
+RUN;
+/* c) */
+/* For DIFF only the Sign-test is reliable which  */
+/* rejects that the medians are equal */
+/* For LDIFF and RATIO all 3 tests are appropriate */
+/* and indicate that the medians and means are not equal */
 
 /* Question 3.8 */
 DATA COAG; 
@@ -844,7 +881,6 @@ DATA COAG_M;
 	U_K=rank_K/21;
 RUN;
 
-/* TODO */
 PROC SGPLOT data=COAG_M aspect=1;
 	title "Actual data";
 	scatter x=U_C y=U_K / markerattrs=(COLOR='blue' size=6);
@@ -860,22 +896,26 @@ PROC SGPLOT data=FGMC aspect=1;
 	title "FGM's Copula";
 	scatter x=X y=Y / markerattrs=(color='blue' size=6);
 RUN;
+/* Looks more alike to the FGM copula */
 
 /* c) */
-/* TODO */
 DATA COAG;
 	set COAG;
 	Z_DIFF = C - K;
 	Z_LDIFF = log(C) - log(K);
 	Z_RATIO = C/K;
+	Z0_RATIO = C/K - 1;
 RUN;
 
 ods select histogram;
-PROC UNIVARIATE data=COAG;
+PROC UNIVARIATE data=COAG normal;
+	var Z_DIFF Z_LDIFF Z_RATIO;
 	histogram Z_DIFF/normal;
     histogram Z_LDIFF/normal;
     histogram Z_RATIO/normal;
 RUN;
+/* Z_DIFF looks most like a normal distribution */
+/* But the evidence is not that convincing. */
 
 /* Testing for H0: μ = 0 vs μ != 0 */
 ods select TestsForLocation;
@@ -901,7 +941,7 @@ DATA COAG;
 	TT_K = (K<120);
 RUN;
 
-/* a Pearson correlation coefficient estimated for two  */
+/* a Pearson correlation coefficient estimated for two */
 /* binary variables will return the phi coefficient. */
 PROC CORR data=COAG pearson;
 	var TT_C TT_K;
@@ -910,7 +950,6 @@ RUN;
 /* We can't reject H0 */
 
 /* e) */
-/* TODO */
 PROC FREQ data=COAG;
       tables TT_C*TT_K; 
       exact mcnem;
@@ -919,10 +958,9 @@ RUN;
 /* Question 3.9 */
 DATA WEEK3_Q9;
 	set SASDATA.IVF;
-	IMP = IMP + (ranuni(1)-0.5); 
 RUN;
 
-/* Creates the Wide dataset */
+/* Creates the wide dataset */
 PROC TRANSPOSE out=WEEK3_Q9_W(drop = _NAME_ _LABEL_) 
 		data=WEEK3_Q9 prefix=IMP;
 	by ID;
@@ -930,33 +968,37 @@ PROC TRANSPOSE out=WEEK3_Q9_W(drop = _NAME_ _LABEL_)
 	var IMP; 
 RUN;
 
-/* Add NP variable and remove empty fields */
 DATA WEEK3_Q9_W;
 	set WEEK3_Q9_W;
-	if cmiss(of _all_) then delete;
-	NP10=(IMP10<85);
-	NP18=(IMP18<85);
-	NP=(IMP18<85|IMP10<85);
+	/* if IMP10<85 or IMP18<85 then delete; */
+	/* cmiss(of IMP10 IMP18) or */
 RUN;
 
 /* a) */
 DATA WEEK3_Q9_a;
 	set WEEK3_Q9_W;
-	IMP_DIFF = IMP18 - IMP10;
-	SIGN = (0 > IMP18 - IMP10);
+	IMP_DIFF =  IMP18 - IMP10;
+	IMP_RATIO = IMP18 / IMP10;
+	IMP_0RATIO = IMP_RATIO - 1;
+	IMP_LDIFF = log(IMP_RATIO);
+	IMP_SIGN = (IMP18 >= IMP10);
 RUN;
 
-/* TODO: Results in a wrong n and n_0 */
-/* n = 236, n_0 = 117  */
+/* Number of ties */
+PROC SQL;
+	SELECT count(*) FROM WEEK3_Q9_a
+	WHERE IMP_0RATIO = 0;
+RUN;
+
 PROC FREQ data=WEEK3_Q9_a;
-	tables SIGN;
+	tables IMP_SIGN;
 RUN;
 
 /* Sign Test */
 /* 2 ⋅ min(𝑃(𝑆 ≤ 𝑠),𝑃(𝑆 ≥ 𝑠)), for UPL and LPL */
 PROC IML;
-	LPL = cdf("Binom", 112, 0.5, 217);
-	UPL = 1 - cdf("Binom", 111, 0.5, 217);
+	LPL = cdf("Binom", 108, 0.5, 228);
+	UPL = 1 - cdf("Binom", 127, 0.5, 228);
 
 	A=LPL||UPL;
 	
