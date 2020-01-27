@@ -425,7 +425,7 @@ RUN;
 		PROC PRINT data=Colties noobs;
 			title "Number of ties for both";
 		RUN;
-	QUIT;
+	quit;
 %MEND;
 
 /* Look at the conditional runs test */
@@ -555,7 +555,13 @@ RUN;
 /* 1st Order Autocorrelation = 0.991 */
 
 /* b) */
+DATA Residuals;
+	set WEEK4_Q9;
+	yhat = 0.027*(X**2) - 0.275*X;
+	resid = y - yhat;
+run;
+
 /* It appears we reject the null hypothesis. */
-%runs_test(data=WEEK4_Q9, var=X, alpha=0.05);
+%runs_test(data=Residuals, var=resid, alpha=0.05);
 
 
