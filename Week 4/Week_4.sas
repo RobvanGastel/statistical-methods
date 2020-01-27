@@ -457,35 +457,18 @@ PROC MIXED data=RCT method=TYPE3 cl;
 RUN;
 /* EBLUPS Patient 1 = -0.01764 and Patient 2 = -0.5176 */
 
-/* c) */
-DATA RM;
-	set RM;
-	ID = _n_;
+PROC MIXED data=rct method=type3;
+	class ID;
+	model RESP = / outp=RC;
+	random ID /solution;
 RUN;
 
-DATA RC;
-	set RC;
-	ID = _n_;
+*c;
+PROC SORT data=RC;
+	by center;
 RUN;
 
-DATA RM;
-	set RM; 
-	RESIDM=RESID; 
-	PredM=Pred; 
-	drop RESID Pred; 
-RUN;
-
-DATA PREDMERGE; 
-	merge RM RC; 
-	by ID RESP; 
-RUN;
-
-DATA PREDMERGE; 
-	set PREDMERGE;
-	EBLUP=PRED-PREDM;
-RUN;
-
-%runs_test(data=PREDMERGE, var=EBLUP, alpha=0.05);
+%Runs_test(data=RC, var=Resid, alpha=0.05);
 
 /* Question 4.7 */
 DATA WEEK4_Q7;

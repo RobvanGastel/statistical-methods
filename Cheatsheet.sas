@@ -451,10 +451,6 @@
 /* Week 4: ANOVA and randomness */
 
 /* Important! Before a Runs test sort the input */
-PROC SORT data=COAG_Solution;
-	by patient;
-RUN;
-
 /* Runs test conditional and unconditional */
 %MACRO Runs_test(data=, var=, alpha=);
 	PROC IML;
