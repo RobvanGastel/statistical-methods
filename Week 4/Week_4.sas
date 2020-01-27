@@ -67,58 +67,38 @@ PROC UNIVARIATE data=WEEK4_Q1 cibasic;
 RUN;
 
 /* TODO: This estimation is off by +-0.06 for mu */
+*mu;
+PROC UNIVARIATE data=WEEK4_Q1 cibasic;
+	var iq;
+RUN;
+
+*a_1;
 PROC IML;
-	Y_bar = 105.6775;
-	std = 7.38253266;
-	alpha = 0.05;
 	n = 40;
-	qt = quantile("T", alpha/2, n-1);
-
-	LPL = Y_bar + qt * (std/sqrt(n));
-	UPL = Y_bar - qt * (std/sqrt(n));
+	alpha=0.05;
+	y_bar = 2.0825;
+	s = 5.77953;
+	qt = quantile("t", alpha/2, n-1);
 	
-	A = LPL||UPL;
-	create CI_c from A [colname={'LPL','UPL'}]; 
-	append from A;
-	close CI_c;
-QUIT;
+	UCL = y_bar + qt * (s/(sqrt(n)));
+	LCL = y_bar - qt * (s/(sqrt(n)));
+	
+	PRINT(UCL||LCL);
+RUN;
 
-/* CI for Alpha's */
-/* SuppA alpha */
+*a_1;
 PROC IML;
-	Y_bar = -2.0725;
-	std = 8.0465266;
-	alpha = 0.05;
 	n = 40;
-	k = 20;
-	qt = quantile("T", 1-alpha/2, n-k-1);
-
-	LPL = Y_bar - qt * sqrt(std**2/n);
-	UPL = Y_bar + qt * sqrt(std**2/n);
+	alpha=0.05;
+	y_bar = -2.0775;
+	s = 5.77923;
+	qt = quantile("t", alpha/2, n-1);
 	
-	A = LPL||UPL;
-	create CI_c from A [colname={'LPL','UPL'}]; 
-	append from A;
-	close CI_c;
-QUIT;
-
-/* suppB alpha */
-PROC IML;
-	Y_bar = 2.0825;
-	std = 7.38253266;
-	alpha = 0.05;
-	n = 40;
-	k = 20;
-	qt = quantile("T", 1-alpha/2, n-k-1);
-
-	LPL = Y_bar - qt * sqrt(std**2/n);
-	UPL = Y_bar + qt * sqrt(std**2/n);
+	UCL = y_bar + qt * (s/(sqrt(n)));
+	LCL = y_bar - qt * (s/(sqrt(n)));
 	
-	A = LPL||UPL;
-	create CI_c from A [colname={'LPL','UPL'}]; 
-	append from A;
-	close CI_c;
-QUIT;
+	PRINT(UCL||LCL);
+RUN;
 
 /* d) */
 PROC TTEST data=WEEK4_Q1;
@@ -126,7 +106,7 @@ PROC TTEST data=WEEK4_Q1;
 	var iq; 
 RUN;
 /* Test statistic = -1.83 and p-value = 0.0747 */
-/* So this is the same as the ANOVA for n = 2. */
+/* So this is the same as the ANOVA. */
 
 /* e) */
 /* If value > 1 there are ties */
@@ -224,7 +204,9 @@ PROC MIXED data=WEEK4_Q1_g method=TYPE3 cl;
 RUN;
 
 /* h) */
-/* Paired ttest is inline with results */
+/* The paired T-test is inline with results */
+/* Take s_pooled as H_0 of the ANOVA expects the sum */
+/* of a_i to be equal to 0. */
 PROC TTEST data=WEEK4_Q1_g;
 	where supplement in ("suppB", "suppC");
 	class supplement;

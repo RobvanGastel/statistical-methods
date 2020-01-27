@@ -100,6 +100,7 @@ RUN;
 /* BW is approximately normal at lambda = 2 */
 DATA WEEK5_Q2;
 	set SASDATA.IVF;
+	where PER = 4;
 RUN;
 
 /* a) */
@@ -162,7 +163,7 @@ PROC FREQ data=WEEK5_Q2;
 RUN;
 
 /* Anderson-Darling */
-/* Test statistic = 1.125654 and p-value = 0.0063 */
+/* Test statistic = 1.1530715 and p-value < 0.0050 */
 
 /* b) */
 PROC MEANS data=WEEK5_Q2 mean std n;
@@ -214,6 +215,7 @@ RUN;
 /* Dataset without outliers */
 DATA WEEK5_Q2_b;
 	set SASDATA.IVF;
+	where PER = 4;
 	if ID = 98 then delete;
 	if ID = 294 then delete;
 RUN;
@@ -223,12 +225,14 @@ PROC UNIVARIATE data=WEEK5_Q2_b normaltest;
 	histogram BW/normal;
 	probplot BW/normal(mu=est sigma=est);
 RUN;
-/* The Test statistics and p-values remain mostly the same */
+/* The Test statistics = 1.3141 p-value < 0.0050 remain  */
+/* mostly the same */
 
 /* c) */
 /* Box-Cox transform with lambda = 2. */
 DATA WEEK5_Q2;
 	set SASDATA.IVF;
+	where PER=4;
 	BWPLUS2 = (0.5)*(BW**(2) - 1);
 RUN;
 
