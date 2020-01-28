@@ -544,12 +544,25 @@ RUN;
 /* 1 2	  | 0.0458		  | 0.8306  | 0.0458 	  | 0.8563  */
 
 /* b) */
-PROC FREQ data=WEEK2_Q7;
+PROC FREQ data=WEEK6_Q1;
+	where TRT in (0, 1);
 	tables FIS*TRT /chisq;
 	exact chisq;
 RUN;
-/* Test statistic = 5.7210 and p-value = 0.0572 */
-/* We can't reject H0 */
+
+
+PROC FREQ data=WEEK6_Q1;
+	where TRT in (2, 1);
+	tables FIS*TRT /chisq;
+	exact chisq;
+RUN;
+
+PROC FREQ data=WEEK6_Q1;
+	where TRT in (0, 2);
+	tables FIS*TRT /chisq;
+	exact chisq;
+RUN;
+/* We can't reject the H0's */
 
 /* Question 2.8 */
 DATA WEEK2_Q8;
