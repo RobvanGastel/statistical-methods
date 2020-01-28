@@ -280,7 +280,7 @@ PROC MEANS data=WEEK1_CUSTOM mean std n;
     output out=custom_sumstat;
 RUN;
 
-PROC transpose data=custom_sumstat out=value_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
+PROC TRANSPOSE data=custom_sumstat out=value_PI (DROP= _TYPE_ _FREQ_ _NAME_ _LABEL_);
 	by _type_ _freq_;
 	id _stat_;
 RUN;
@@ -326,7 +326,8 @@ PROC MEANS data=WEEK1 mean std n;
     output out=gal_sumstat;
 RUN;
 
-PROC transpose data=gal_sumstat out=gal_PI (drop= _TYPE_ _FREQ_ _NAME_ _LABEL_);
+PROC TRANSPOSE data=gal_sumstat out=gal_PI 
+		(drop= _TYPE_ _FREQ_ _NAME_ _LABEL_);
 	by _type_ _freq_;
 	id _stat_;
 RUN;
@@ -451,7 +452,7 @@ RUN;
 /* a) */
 %samples(dataset=WEEK1, ns=1000, n=10);
 
-PROC PRINT DATA=FINAL;
+PROC PRINT data=FINAL;
 RUN;
 
 /* b) */

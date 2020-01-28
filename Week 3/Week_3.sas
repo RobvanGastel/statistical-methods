@@ -978,10 +978,6 @@ RUN;
 DATA WEEK3_Q9_a;
 	set WEEK3_Q9_W;
 	IMP_DIFF =  IMP18 - IMP10;
-/* 	IMP_RATIO = IMP18 / IMP10; */
-/* 	IMP_0RATIO = IMP_RATIO - 1; */
-/* 	IMP_LDIFF = log(IMP_RATIO); */
-/* 	IMP_SIGN = (IMP18 >= IMP10); */
 RUN;
 
 /* Sign Test */

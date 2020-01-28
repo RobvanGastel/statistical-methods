@@ -718,15 +718,5 @@
       	label abs_norm_val="absolute normalized value (z_k)";
 	RUN;
 	title; 
-%MEND;
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
+%MEND; 
       
