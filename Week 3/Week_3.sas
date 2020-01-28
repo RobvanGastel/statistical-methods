@@ -717,9 +717,9 @@ PROC SGPLOT data=WEEK3_Q4_M_h aspect=1;
 RUN;
 
 /* Question 3.6 */
-DATA WEEK3_Q6;
+DATA RCT;
 	set SASDATA.RCT;
-	WHERE center = 1;
+	where time = 5 or time = 6 and center=1;
 RUN;
 
 /* a) */
