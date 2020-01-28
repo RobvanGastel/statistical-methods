@@ -9,32 +9,31 @@ RUN;
 /* a) */
 PROC MIXED data=WEEK7_Q1 method=TYPE3 cl;
 	class TRT ID;
-	model RESP=TRT /solution cl ddfm=satterthwaite;
+	model RESP=TRT /solution cl ddfm=SAT;
 	random ID;
 RUN;
 
 /* b) */
 PROC MIXED data=WEEK7_Q1 method=TYPE3 cl;
 	class TRT;
-	model RESP=TRT /solution cl ddfm=satterthwaite;
+	model RESP=TRT /solution cl ddfm=SAT;
 RUN;
 
-/* TODO: Compare */
 /* c) */
 PROC MIXED data=WEEK7_Q1 method=TYPE3 cl;
 	class TRT TIME ID;
-	model RESP=TRT /solution cl ddfm=satterthwaite;
+	model RESP=TRT /solution cl ddfm=SAT;
 	random ID TIME;
 RUN;
 
 /* d) */
-/* TODO: Answer is close but still off. */
 PROC FREQ data=WEEK7_Q1;
-	tables TRT*RESP*TIME /cmh2 scores=rank noprint;
+	tables TRT*ID*TIME*RESP /cmh2 scores=rank noprint;
 RUN;
 
 /* e) */
-/* TODO */
+/* Friedman as the assumptions of the ANOVA model are not */
+/* valid. */
 
 /* Question 7.2 */
 DATA IVF;
@@ -56,24 +55,24 @@ RUN;
 /* b) */
 /* The traditional hypothesis for a fixed effects vars, */
 /* H0: 𝜶𝟏 + ⋯ + 𝜶𝒎 = 𝟎  vs. H1: 𝜶𝟏 + ⋯ + 𝜶𝒎 != 𝟎 */
-/* TODO: p-value is off by 0.0001 */
-ods output SolutionR = solR;
-PROC MIXED data=IVF method=TYPE3 cl;
+/* We reject the H0 as p-value = 0.0031 */
+ods output solutionR = solR;
+PROC MIXED data=IVF method=TYPE3;
 	class TRT PER ID;
-	model IMP = TRT PER /solution cl ddfm=SAT outpm=RM outp=RC;
+	model IMP = TRT PER TRT*PER /solution outp=RC outpm=RM;
 	random ID(TRT) /solution;
 RUN;
 
 /* c) */
-/* TODO */
+/* We can't say age has an influence on the perforamence */
+/* of the treatment. As the p-value = 0.1205 */
 
 /* d) */
-/* TODO: Also this estimate is slightly off */
 PROC IML;
 	/* Estimate COV of random effect */
-	S_g = 1.5477; 
+	S_g = 1.5449; 
 	/* Estimate COV of residuals */
-	S_res = 7.1145;
+	S_res = 7.0802;
 	ICC = S_g / (S_g + S_res);
 	
 	A = ICC;
@@ -96,20 +95,25 @@ RUN;
 
 PROC GLM data=RC;
 	class TRT PER;
-	model resid = TRT*PER;
-	means TRT*PER/ hovtest=Bartlett;
+	model resid = TRT*PER*TRT*PER;
+	means TRT*PER*TRT*PER/ hovtest=Bartlett;
 RUN;
 
 /* f) */
 PROC MIXED data=IVF method=TYPE3 cl;
 	class TRT PER ID;
-	model IMP = TRT PER /solution cl ddfm=SAT outpm=RM outp=RC;
+	model IMP = TRT PER TRT*PER /solution ddfm=SAT;
 	random ID(TRT) /solution;
-	lsmeans TRT/diff=control adjust=tukey cl;
+	lsmeans TRT/diff=control('0') adjust=dunnett cl;
 RUN;
 
 /* g) */
-/* TODO */
+PROC MIXED data=IVF method=TYPE3 cl;
+	class TRT PER ID;
+	model IMP = TRT PER TRT*PER /solution ddfm=SAT;
+	random ID(TRT) /solution;
+	lsmeans TRT/diff=control('0') adjust=dunnett cl;
+RUN;
 
 /* Question 7.3 */
 DATA RCT;
@@ -117,37 +121,69 @@ DATA RCT;
 RUN;
 
 /* a) */
-/* TODO */
+/* - */
 
 /* b) */
-/* TODO */
+ods output SolutionR = SolR;
 PROC MIXED data=RCT method=TYPE3 cl;
 	class TRT TIME CENTER ID;
 	model RESP = TRT TIME CENTER TRT*TIME TRT*CENTER TIME*CENTER TRT*TIME*CENTER /solution cl ddfm=SAT outpm=RM outp=RC;
 	random ID(TRT*CENTER) /solution;
-	lsmeans TRT/diff=control adjust=tukey cl;
 RUN;
 
 /* c) */
+/* - */
 
+/* d) */
+PROC IML;
+	/* Estimate COV of random effect */
+	S_g = 0.3299; 
+	/* Estimate COV of residuals */
+	S_res = 0.3882;
+	ICC = S_g / (S_g + S_res);
+	
+	A = ICC;
+	create ICC from A [colname={'ICC'}]; 
+	append from A;
+	close ICC;
+RUN;
 
+DATA _;
+	set SolR;
+	where ID > -1 and ID < 4;
+RUN;
 
+/* e) */
+ods output SolutionR = SolR;
+PROC MIXED data=RCT method=TYPE3 cl;
+	class TRT TIME CENTER ID;
+	model RESP = TRT TIME CENTER TRT*TIME TRT*CENTER TIME*CENTER TRT*TIME*CENTER /solution cl ddfm=SAT outpm=RM outp=RC;
+	random ID(TRT*CENTER);
+	lsmeans TRT /diff=control('0') adjust=dunnett cl;
+RUN;
 
+/* f) */
+/* TODO */
 
+/* g) */
+data RCT_DATASET_NEW;
+	set RCT;
+	where CENTER =1;
+	if TIME < 4 then SENSOR = 1; else SENSOR = 2;
+	keep ID RESP SENSOR;
+run;
 
+PROC MIXED data=RCT_DATASET_NEW method=TYPE3 cl;
+	class ID SENSOR;
+	model RESP = ID /solution ddfm=SAT outpm=RM outp=RC;
+	random SENSOR(ID);
+RUN;
 
+/* h) */
+/* TODO */
 
-
-
-
-
-
-
-
-
-
-
-
+/* i) */
+/* TODO */
 
 
 
