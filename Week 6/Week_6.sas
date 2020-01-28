@@ -8,14 +8,27 @@ DATA WEEK6_Q1;
 RUN;
 
 PROC FREQ data=WEEK6_Q1;
+	where TRT in (0, 1);
 	tables FIS*TRT /chisq;
 	exact chisq;
 RUN;
+
+PROC FREQ data=WEEK6_Q1;
+	where TRT in (2, 1);
+	tables FIS*TRT /chisq;
+	exact chisq;
+RUN;
+
+PROC FREQ data=WEEK6_Q1;
+	where TRT in (0, 2);
+	tables FIS*TRT /chisq;
+	exact chisq;
+RUN;
+
 /* Comparing 3 treatments yields */
-/* 1 vs 0, 1 vs 2, 0 vs 2 */
 /* 𝛼 = 0.05/3 = 0.0166666667 */
-/* Now the p-value = 0.0572 - 0.0166 = 0.406 */
-/* So we would reject the H0 now */
+/* With the new experimental wise error rate */
+/* We still would reject H_0. */
 
 /* b) */
 DATA WEEK6_Q1_b;
@@ -39,8 +52,6 @@ PROC FREQ data=WEEK6_Q1_b;
 	exact mcnem;
 RUN;
 /* p-value = 0.4807 */
-/* The p-value is already insignificant without */
-/* adjusting for multiple tests */
 
 PROC FREQ data=WEEK6_Q1_b;
 	where drug = 1;
@@ -49,7 +60,14 @@ PROC FREQ data=WEEK6_Q1_b;
 	exact mcnem;
 RUN;
 /* p-value = 0.49 */
-/* We still reject H0 */
+
+PROC IML;
+	bon = 0.05/2;
+	print(bon);
+RUN;
+
+/* After adjusting we don't reject the H0 after */
+/* as the new p-value is 0.025 */
 
 /* c) */
 DATA WEEK6_Q1_c;
@@ -173,8 +191,8 @@ PROC MIXED data=WEEK6_Q2 method=TYPE3 cl;
 RUN;
 /* Comparison | p-value adj */
 /* 0 vs 1	  | 0.9999 */
-/* 0 vs 2     | 0.0033 */
-/* 1 vs 2     | 0.0100 */
+/* 0 vs 2     | 0.0092 */
+/* 1 vs 2     | 0.0270 */
 
 /* e) */
 /* Scheffe's method is more convservative if this method's CI */
@@ -206,26 +224,24 @@ RUN;
 /* a being the trt */
 
 /* b) */
-PROC MIXED data=WEEK6_Q3 method=TYPE3 cl; 
-	class CENTER TRT;
-	model RESP = TRT CENTER /solution cl;
-	lsmeans TRT/diff=CONTROL adjust=TUKEY cl;
+PROC MIXED DATA=Week6_Q3 METHOD=TYPE3 cl;
+	CLASS CENTER TRT;
+	MODEL RESP = CENTER TRT /SOLUTION CL;
 RUN;
 
 /* c) */
 /* We observe F value = 6.31 and p-value < 0.0001 */
 
 /* d) */
-PROC MIXED data=WEEK6_Q3 method=TYPE3 cl; 
-	class CENTER;
-	model RESP = CENTER /solution cl;
+PROC MIXED data=WEEK6_Q3 method=TYPE3; 
+	class TRT;
+	model RESP = TRT /solution;
 RUN;
 
 /* e) */
 PROC MIXED data=WEEK6_Q3 method=TYPE3 cl; 
 	class CENTER TRT;
 	model RESP = TRT CENTER /solution cl;
-	lsmeans TRT/diff=control adjust=tukey cl;
 	lsmeans CENTER/diff=control adjust=tukey cl;
 RUN;
 
@@ -233,11 +249,11 @@ RUN;
 PROC MIXED data=WEEK6_Q3 method=TYPE3 cl; 
 	class CENTER TRT;
 	model RESP = TRT CENTER /solution cl;
-	lsmeans TRT/diff=control adjust=dunnet cl;
+	lsmeans TRT/diff=control adjust=dunnett cl;
 RUN;
 
 /* g) */
-/* Not Kruskal-Wallis again */
+/* Not Kruskal-Wallis again, as we have 2 fixed effects */
 
 /* Question 6.4 */
 /* a) A Bonferroni or Sidak experiment 
