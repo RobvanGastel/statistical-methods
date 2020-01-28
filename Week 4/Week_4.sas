@@ -421,7 +421,8 @@ RUN;
 /* independence of the residuals.  */
 
 /* f) */
-/* TODO */
+/* TODO: Runs test doesn't produce the same */
+/* result. */
 PROC SORT data=COAG_SOLUTION;
 	by Patient;
 RUN;
